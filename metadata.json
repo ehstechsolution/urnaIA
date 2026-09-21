@@ -1,0 +1,6 @@
+{
+  "name": "Simulador de Urna Eletrônica e Voto Impresso",
+  "description": "Simulador de alta fidelidade da Urna Eletrônica Brasileira (padrão TSE) com Módulo de Voto Impresso Auditável (VRP), áudio nativo e auditoria cruzada.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,2843 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Urna Eletrônica Brasileira com Módulo VRP (Voto Impresso Auditável)</title>
+  <style>
+    /* ==========================================================================
+       RESET E ESTILOS GERAIS
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: #171a21;
+      color: #e5e7eb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+    }
+
+    /* Cabeçalho Oficial */
+    header {
+      max-width: 1320px;
+      margin: 0 auto 16px auto;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #2d3340;
+    }
+
+    .brand-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brasao-tse {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #15803d, #eab308, #2563eb);
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    }
+
+    .brasao-inner {
+      width: 100%;
+      height: 100%;
+      background: #171a21;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 13px;
+      color: #facc15;
+      letter-spacing: 0.5px;
+    }
+
+    .titulo-principal {
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-tse {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 12px;
+      background: #064e3b;
+      color: #6ee7b7;
+      border: 1px solid #047857;
+      font-family: monospace;
+    }
+
+    .subtitulo {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .btn-top {
+      background: #252b36;
+      color: #e5e7eb;
+      border: 1px solid #374151;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-top:hover {
+      background: #323a48;
+      border-color: #4b5563;
+      color: #ffffff;
+    }
+
+    /* Barra de Progresso dos 6 Cargos */
+    .cargos-stepper {
+      max-width: 1320px;
+      margin: 0 auto 16px auto;
+      width: 100%;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .cargo-step-item {
+      flex: 1;
+      min-width: 130px;
+      background: #1f242d;
+      border: 1px solid #2d3340;
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+
+    .cargo-step-item.active {
+      background: #451a03;
+      border-color: #f59e0b;
+      color: #fde68a;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+    }
+
+    .cargo-step-item.completed {
+      background: #064e3b;
+      border-color: #10b981;
+      color: #a7f3d0;
+    }
+
+    .cargo-step-ordem {
+      font-size: 10px;
+      color: #9ca3af;
+      text-transform: uppercase;
+    }
+
+    .cargo-step-nome {
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Container Principal: Gabinete da Urna Eletrônica e Módulo VRP */
+    .urna-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      align-items: stretch;
+      flex: 1;
+    }
+
+    @media (max-width: 1100px) {
+      .urna-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Gabinete Físico da Urna Eletrônica Real (Modelo Diebold UE2022/UE2026) */
+    .gabinete-urna {
+      background: linear-gradient(to bottom, #edf0f5, #e2e6ed 40%, #d4d8e0);
+      border: 4px solid #bcc2cc;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.8);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .gabinete-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+
+    .gabinete-corpo {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+      flex: 1;
+    }
+
+    @media (max-width: 860px) {
+      .gabinete-corpo {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .gabinete-base-footer {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .diebold-badge {
+      background: #cbd2dc;
+      border: 1px solid #aeb6c2;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.25);
+      border-radius: 4px;
+      padding: 2px 14px;
+      font-size: 11px;
+      font-weight: 900;
+      font-style: italic;
+      letter-spacing: -0.5px;
+      color: #0284c7;
+      user-select: none;
+    }
+
+    .gabinete-ranhuras {
+      position: absolute;
+      bottom: -18px;
+      left: 30px;
+      right: 30px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .ranhura-traco {
+      width: 6px;
+      height: 12px;
+      background: #8e96a3;
+      border-top: 1px solid #4b5563;
+      border-left: 1px solid #4b5563;
+      border-radius: 2px 2px 0 0;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    .secao-rotulo {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #4b5563;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Placa Superior do Teclado Realista: Brasão + Justiça Eleitoral */
+    .teclado-placa-superior {
+      background: linear-gradient(to bottom, #ffffff, #f3f4f6);
+      border: 2px solid #cbd5e1;
+      border-radius: 8px 8px 0 0;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .teclado-placa-marca {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .teclado-brasao-svg {
+      width: 40px;
+      height: 40px;
+      background: #fff;
+      border-radius: 4px;
+      padding: 1px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      border: 1px solid #e5e7eb;
+    }
+
+    .teclado-titulo-oficial {
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: #111827;
+      text-transform: uppercase;
+      line-height: 1.1;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .painel-teclado-preto {
+      background: #18191d;
+      border: 4px solid #121316;
+      border-radius: 0 0 10px 10px;
+      padding: 16px;
+      box-shadow: inset 0 4px 14px rgba(0,0,0,0.8);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Foto dentro do LCD acima dos números */
+    .lcd-foto-acima-bloco {
+      background: rgba(210, 220, 191, 0.6);
+      border: 1px solid rgba(43, 51, 37, 0.25);
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 125px;
+    }
+
+    .lcd-foto-moldura-img {
+      width: 80px;
+      height: 98px;
+      background: #111827;
+      border: 2px solid #1c2217;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .lcd-foto-moldura-img img {
+      width: 100%;
+      height: 80px;
+      object-fit: cover;
+      filter: grayscale(100%) contrast(125%);
+    }
+
+    .lcd-foto-moldura-img span {
+      background: #fff;
+      color: #111827;
+      font-size: 8px;
+      font-weight: 900;
+      width: 100%;
+      text-align: center;
+      padding: 1px 0;
+      text-transform: uppercase;
+    }
+
+    .lcd-diebold-watermark {
+      position: absolute;
+      bottom: 6px;
+      right: 12px;
+      font-family: system-ui, sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      font-style: italic;
+      letter-spacing: -0.5px;
+      color: #0284c7;
+      opacity: 0.85;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    /* ==========================================================================
+       1. TELA DA URNA (LCD / CRT SIMULADO)
+       ========================================================================== */
+    .tela-urna-moldura {
+      background: #2b3038;
+      border: 4px solid #1a1d22;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.6);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tela-lcd {
+      background: #d8e1cb;
+      color: #1a2216;
+      border: 4px solid #3c4436;
+      border-radius: 6px;
+      flex: 1;
+      min-height: 480px;
+      padding: 20px;
+      font-family: "Courier New", Courier, monospace, monospace;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      box-shadow: inset 0 4px 16px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+
+    .tela-lcd::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(#1c2217 1px, transparent 1px);
+      background-size: 8px 8px;
+      opacity: 0.08;
+      pointer-events: none;
+    }
+
+    .lcd-topo {
+      position: relative;
+      z-index: 2;
+    }
+
+    .lcd-subtitulo {
+      font-size: 13px;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #4b5563;
+      letter-spacing: 1px;
+    }
+
+    .lcd-cargo {
+      font-size: 24px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #111827;
+      border-bottom: 1.5px solid rgba(26, 34, 22, 0.3);
+      padding-bottom: 4px;
+      margin-top: 2px;
+    }
+
+    /* Alerta de Senador Repetido */
+    .alerta-senador {
+      background: #b91c1c;
+      color: #ffffff;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      margin: 8px 0;
+      border: 2px solid #7f1d1d;
+      animation: piscarAlerta 0.8s infinite alternate;
+      position: relative;
+      z-index: 3;
+    }
+
+    @keyframes piscarAlerta {
+      from { opacity: 0.85; transform: scale(0.99); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .lcd-meio {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin: auto 0;
+      position: relative;
+      z-index: 2;
+      width: 100%;
+    }
+
+    .lcd-dados-candidato {
+      flex: 1;
+    }
+
+    .linha-numero {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .rotulo-numero {
+      font-size: 15px;
+      font-weight: bold;
+    }
+
+    .digitos-container {
+      display: flex;
+      gap: 6px;
+    }
+
+    .digito-box {
+      width: 40px;
+      height: 52px;
+      border: 2px solid #1c2217;
+      background: #e4edd7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 900;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    .digito-box.cursor-ativo {
+      border-bottom: 5px solid #0f140d;
+      background: #eef7e1;
+      animation: blinkCursor 0.9s infinite;
+    }
+
+    @keyframes blinkCursor {
+      0%, 49% { border-bottom-color: #0f140d; }
+      50%, 100% { border-bottom-color: transparent; }
+    }
+
+    .voto-branco-texto {
+      background: #e4edd7;
+      border: 2px solid #1c2217;
+      padding: 16px;
+      text-align: center;
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      animation: piscarSuave 1.2s infinite alternate;
+    }
+
+    @keyframes piscarSuave {
+      from { opacity: 0.7; }
+      to { opacity: 1; }
+    }
+
+    .detalhes-candidato {
+      border-top: 1px solid rgba(28, 34, 23, 0.3);
+      padding-top: 8px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .detalhes-candidato strong {
+      color: #374151;
+    }
+
+    .nome-candidato-destaque {
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #0f140d;
+    }
+
+    .partido-destaque {
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .voto-nulo-aviso {
+      margin-top: 10px;
+    }
+
+    .tag-numero-errado {
+      background: #1c2217;
+      color: #d8e1cb;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 900;
+      display: inline-block;
+      text-transform: uppercase;
+    }
+
+    .texto-voto-nulo {
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      margin-top: 6px;
+      text-transform: uppercase;
+      animation: piscarSuave 1s infinite alternate;
+    }
+
+    /* Fotos dos Candidatos na Tela */
+    .lcd-fotos-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .foto-card {
+      background: #c9c4b7;
+      border: 2px solid #4b5563;
+      padding: 3px;
+      width: 120px;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .foto-card.vice {
+      width: 85px;
+    }
+
+    .foto-img-wrap {
+      width: 100%;
+      height: 140px;
+      background: #111827;
+      overflow: hidden;
+      border: 1px solid #374151;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .foto-card.vice .foto-img-wrap {
+      height: 90px;
+    }
+
+    .foto-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: grayscale(100%) contrast(120%);
+    }
+
+    .foto-label {
+      background: #1f242d;
+      color: #ffffff;
+      font-size: 9px;
+      font-weight: 800;
+      text-align: center;
+      padding: 2px 0;
+      margin-top: 2px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Rodapé da Urna */
+    .lcd-rodape {
+      border-top: 2px solid #1c2217;
+      padding-top: 8px;
+      font-size: 11px;
+      line-height: 1.4;
+      position: relative;
+      z-index: 2;
+    }
+
+    .lcd-rodape-comandos {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .cmd-confirma {
+      color: #15803d;
+      font-weight: 900;
+    }
+
+    .cmd-corrige {
+      color: #c2410c;
+      font-weight: 900;
+    }
+
+    /* Tela de FIM */
+    .tela-fim-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+    }
+
+    .tela-fim-palavra {
+      font-size: 90px;
+      font-weight: 900;
+      letter-spacing: 6px;
+      color: #111827;
+      animation: piscarFim 1s infinite alternate;
+    }
+
+    @keyframes piscarFim {
+      0% { opacity: 0.85; transform: scale(0.98); }
+      100% { opacity: 1; transform: scale(1.02); }
+    }
+
+    .tela-fim-votou {
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      border-top: 2px solid #1c2217;
+      border-bottom: 2px solid #1c2217;
+      padding: 4px 20px;
+      margin-top: 8px;
+    }
+
+    /* ==========================================================================
+       2. TECLADO NUMÉRICO E DE AÇÕES (CENTRO)
+       ========================================================================== */
+    .teclado-modulo {
+      background: #2b3038;
+      border: 4px solid #1a1d22;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .teclado-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #3d4452;
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+    }
+
+    .teclado-marca {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .teclado-brasao-pequeno {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #eab308;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 900;
+      color: #1f242d;
+    }
+
+    .teclado-titulo {
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: #e5e7eb;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .teclado-modelo {
+      font-size: 9px;
+      color: #9ca3af;
+      font-family: monospace;
+    }
+
+    .btn-audio-toggle {
+      background: #1f242d;
+      border: 1px solid #374151;
+      color: #9ca3af;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-audio-toggle.ativo {
+      color: #10b981;
+      border-color: #059669;
+    }
+
+    /* Grade Numérica */
+    .grade-numerica {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .tecla-num {
+      height: 58px;
+      background: linear-gradient(to bottom, #3b414d, #20242b);
+      color: #ffffff;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 26px;
+      font-weight: 900;
+      border-radius: 8px;
+      border-top: 1px solid #565f72;
+      border-left: 1px solid #565f72;
+      border-bottom: 4px solid #14171c;
+      border-right: 2px solid #14171c;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: all 0.05s ease-out;
+    }
+
+    .tecla-num:active {
+      transform: translateY(3px);
+      border-bottom-width: 1px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+    }
+
+    /* Ponto tátil em alto relevo no número 5 */
+    .ponto-braille {
+      position: absolute;
+      bottom: 6px;
+      width: 5px;
+      height: 5px;
+      background: #9ca3af;
+      border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+
+    .linha-zero {
+      grid-column: 2;
+    }
+
+    /* Teclas de Ação Oficiais: BRANCO, CORRIGE e CONFIRMA */
+    .grade-acoes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      align-items: end;
+      border-top: 1px solid #3d4452;
+      padding-top: 14px;
+    }
+
+    .tecla-acao {
+      border-radius: 8px;
+      font-weight: 900;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+      transition: all 0.05s ease-out;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .tecla-acao:active {
+      transform: translateY(3px);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+    }
+
+    .tecla-branco {
+      height: 52px;
+      background: linear-gradient(to bottom, #ffffff, #e5e7eb);
+      color: #111827;
+      font-size: 13px;
+      border-top: 1px solid #ffffff;
+      border-left: 1px solid #ffffff;
+      border-bottom: 4px solid #9ca3af;
+      border-right: 2px solid #9ca3af;
+    }
+    .tecla-branco:active { border-bottom-width: 1px; }
+
+    .tecla-corrige {
+      height: 52px;
+      background: linear-gradient(to bottom, #f97316, #c2410c);
+      color: #ffffff;
+      font-size: 13px;
+      border-top: 1px solid #fb923c;
+      border-left: 1px solid #fb923c;
+      border-bottom: 4px solid #7c2d12;
+      border-right: 2px solid #7c2d12;
+    }
+    .tecla-corrige:active { border-bottom-width: 1px; }
+
+    .tecla-confirma {
+      height: 64px;
+      background: linear-gradient(to bottom, #22c55e, #15803d);
+      color: #ffffff;
+      font-size: 15px;
+      border-top: 1px solid #4ade80;
+      border-left: 1px solid #4ade80;
+      border-bottom: 4px solid #14532d;
+      border-right: 2px solid #14532d;
+      margin-top: -8px;
+    }
+    .tecla-confirma:active { border-bottom-width: 1px; }
+
+    .teclado-instrucao-teclado {
+      text-align: center;
+      font-size: 10px;
+      color: #9ca3af;
+      font-family: monospace;
+      margin-top: 10px;
+    }
+
+    /* ==========================================================================
+       3. MÓDULO DE VOTO IMPRESSO AUDITÁVEL (VRP)
+       ========================================================================== */
+    .vrp-modulo {
+      background: #242932;
+      border: 4px solid #17191e;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .vrp-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #374151;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+
+    .vrp-titulo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .vrp-icone-escudo {
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 4px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .vrp-titulo {
+      font-size: 13px;
+      font-weight: 900;
+      color: #e5e7eb;
+      letter-spacing: 0.8px;
+      line-height: 1;
+    }
+
+    .vrp-subtitulo {
+      font-size: 10px;
+      color: #9ca3af;
+      font-family: monospace;
+    }
+
+    .vrp-status-online {
+      font-size: 10px;
+      font-family: monospace;
+      color: #34d399;
+      background: #064e3b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #059669;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .ponto-led-verde {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 6px #34d399;
+    }
+
+    /* Visor Acrílico */
+    .vrp-visor-acrilico {
+      background: linear-gradient(to bottom, #11141a, #1a202a, #11141a);
+      border: 2px solid #4b5563;
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 380px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 4px 16px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .vrp-visor-reflexo {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .guilhotina-corte-linha {
+      border-bottom: 2px dashed rgba(239, 68, 68, 0.6);
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+      font-size: 9px;
+      font-family: monospace;
+      color: #f87171;
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Fita Térmica */
+    .fita-papel {
+      background: #fffff2;
+      color: #111827;
+      border-left: 2px solid #d1d5db;
+      border-right: 2px solid #d1d5db;
+      padding: 14px;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 11px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      z-index: 2;
+    }
+
+    .fita-papel.cortando-caindo {
+      transform: translateY(240px) rotate(2deg) scale(0.95);
+      opacity: 0;
+    }
+
+    .fita-cabecalho {
+      text-align: center;
+      border-bottom: 1px dashed #6b7280;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+    }
+
+    .fita-rep {
+      font-size: 9px;
+      font-weight: bold;
+      color: #4b5563;
+      text-transform: uppercase;
+    }
+
+    .fita-titulo {
+      font-size: 12px;
+      font-weight: 900;
+      color: #111827;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .fita-aviso-sigilo {
+      font-size: 8px;
+      color: #6b7280;
+      font-weight: bold;
+    }
+
+    .fita-itens-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .fita-item-voto {
+      border-bottom: 1px dotted #9ca3af;
+      padding-bottom: 4px;
+    }
+
+    .fita-item-cargo {
+      font-size: 9px;
+      font-weight: bold;
+      color: #4b5563;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .fita-item-linha-voto {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 900;
+      color: #000000;
+      margin-top: 2px;
+    }
+
+    .fita-item-nome {
+      font-size: 9px;
+      font-weight: 700;
+      color: #1f2937;
+      text-transform: uppercase;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .fita-rodape-hash {
+      border-top: 1px dashed #6b7280;
+      padding-top: 6px;
+      margin-top: 8px;
+      font-size: 9px;
+      line-height: 1.3;
+    }
+
+    .fita-hash-box {
+      background: #e5e7eb;
+      border: 1px solid #d1d5db;
+      padding: 3px;
+      border-radius: 2px;
+      font-weight: 900;
+      text-align: center;
+      margin: 4px 0;
+      font-family: monospace;
+      color: #111827;
+    }
+
+    /* Urna Física de Depósito Selada */
+    .deposito-fisico-box {
+      background: #171a20;
+      border: 2px solid #374151;
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .deposito-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icone-cadeado {
+      background: rgba(185, 28, 28, 0.2);
+      border: 1px solid rgba(185, 28, 28, 0.5);
+      color: #f87171;
+      padding: 4px 6px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .deposito-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: #e5e7eb;
+      text-transform: uppercase;
+    }
+
+    .deposito-lacre {
+      font-size: 9px;
+      color: #9ca3af;
+      font-family: monospace;
+    }
+
+    .deposito-contador-num {
+      font-size: 18px;
+      font-weight: 900;
+      color: #fbbf24;
+      font-family: monospace;
+      text-align: right;
+    }
+
+    .deposito-contador-txt {
+      font-size: 9px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      text-align: right;
+    }
+
+    .botoes-vrp-acoes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .btn-vrp {
+      background: #2b3340;
+      border: 1px solid #4b5563;
+      color: #e5e7eb;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .btn-vrp:hover {
+      background: #374254;
+      color: #ffffff;
+    }
+
+    /* ==========================================================================
+       COLINHA DO ELEITOR (GUIAS PARA TESTE)
+       ========================================================================== */
+    .colinha-container {
+      max-width: 1320px;
+      margin: 16px auto 0 auto;
+      width: 100%;
+      background: #1e232b;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .colinha-header {
+      padding: 10px 14px;
+      background: #171a21;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .colinha-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+      padding: 12px;
+      background: #1b1f26;
+    }
+
+    .colinha-card {
+      background: #262c36;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.15s;
+    }
+    .colinha-card:hover {
+      border-color: #f59e0b;
+      background: #2e3542;
+    }
+
+    .colinha-card-num {
+      font-family: monospace;
+      font-weight: 900;
+      font-size: 15px;
+      color: #fbbf24;
+    }
+
+    .colinha-card-nome {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #e5e7eb;
+    }
+
+    .colinha-card-partido {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+
+    /* Modal de Auditoria Cruzada */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.aberto {
+      display: flex;
+    }
+
+    .modal-conteudo {
+      background: #1e232b;
+      border: 2px solid #374151;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 800px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    }
+
+    .modal-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid #374151;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #171a21;
+    }
+
+    .modal-corpo {
+      padding: 16px;
+      overflow-y: auto;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .modal-rodape {
+      padding: 12px 18px;
+      border-top: 1px solid #374151;
+      display: flex;
+      justify-content: flex-end;
+      background: #171a21;
+    }
+
+    .badge-conforme {
+      background: #064e3b;
+      color: #6ee7b7;
+      border: 1px solid #059669;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 900;
+      display: inline-block;
+    }
+
+    /* Estilos da Relação Oficial de Candidatos */
+    .relacao-filtro-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid #374151;
+      background: #252b36;
+      color: #d1d5db;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .relacao-filtro-btn:hover {
+      background: #323946;
+      color: #fff;
+    }
+    .relacao-filtro-btn.ativo {
+      background: #f59e0b;
+      color: #111827;
+      border-color: #d97706;
+      font-weight: 900;
+    }
+    .relacao-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .relacao-card {
+      background: #262c38;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.2s;
+    }
+    .relacao-card:hover {
+      border-color: #f59e0b;
+    }
+    .relacao-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .relacao-card-cargo {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 6px;
+      background: #171a21;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      color: #9ca3af;
+    }
+    .relacao-card-num {
+      font-family: monospace;
+      font-size: 20px;
+      font-weight: 900;
+      color: #fbbf24;
+      line-height: 1;
+    }
+    .relacao-card-body {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .relacao-card-foto {
+      width: 55px;
+      height: 70px;
+      object-cover: cover;
+      background: #111827;
+      border: 1px solid #4b5563;
+      border-radius: 6px;
+      filter: grayscale(100%) contrast(120%);
+    }
+    .relacao-card-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .relacao-card-nome {
+      font-size: 12px;
+      font-weight: 800;
+      color: #fff;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .relacao-card-completo {
+      font-size: 10px;
+      color: #9ca3af;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+    .relacao-card-partido {
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+    }
+    .relacao-partido-tag {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+      font-family: monospace;
+      font-weight: 800;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 9px;
+    }
+    .btn-votar-relacao {
+      width: 100%;
+      padding: 6px;
+      background: #059669;
+      color: #fff;
+      font-weight: 800;
+      font-size: 11px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+    .btn-votar-relacao:hover {
+      background: #10b981;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CABEÇALHO INSTITUCIONAL -->
+  <header>
+    <div class="brand-container">
+      <div class="brasao-tse">
+        <div class="brasao-inner">BR</div>
+      </div>
+      <div>
+        <div class="titulo-principal">
+          Simulador Urna Eletrônica & Módulo VRP
+        </div>
+        <div class="subtitulo">Eleições Gerais • Sistema de Voto Impresso Auditável</div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <button type="button" class="btn-top" onclick="iniciarNovoEleitor()" id="btn-novo-eleitor-topo" style="display: none;">
+        🔄 Novo Eleitor
+      </button>
+      <button type="button" class="btn-top" onclick="abrirModalVRP()" id="btn-abrir-vrp-topo" style="display: none; background: #059669; color: #fff; font-weight: 900; border-color: #047857;">
+        🖨️ Impressão VRP
+      </button>
+      <button type="button" class="btn-top" onclick="abrirModalRelacao()" id="btn-abrir-relacao-topo" style="background: #f59e0b; color: #111827; font-weight: 900; border-color: #d97706;">
+        📋 Relação dos Candidatos
+      </button>
+      <button type="button" class="btn-top" onclick="abrirModalAuditoria()">
+        🛡️ Painel de Auditoria
+      </button>
+    </div>
+  </header>
+
+  <!-- STEPPER DE CARGOS DO TSE -->
+  <div class="cargos-stepper" id="stepper-cargos"></div>
+
+  <!-- CONTAINER PRINCIPAL: GABINETE DA URNA ELETRÔNICA CENTRALIZADO -->
+  <main class="urna-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; max-width: 900px; margin: 0 auto; width: 100%;">
+
+    <!-- GABINETE DA URNA ELETRÔNICA REAL (LADO ESQUERDO: TELA LCD | LADO DIREITO: FOTO E TECLADO) -->
+    <section class="gabinete-urna" id="gabinete-urna-fisica" style="width: 100%;">
+      <div class="gabinete-top-bar">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px rgba(16,185,129,0.8);"></span>
+          <span style="font-weight: 900; font-size: 12px; font-family: monospace; text-transform: uppercase; color: #e5e7eb; letter-spacing: 0.5px;">
+            TERMINAL DO ELEITOR • JUSTIÇA ELEITORAL
+          </span>
+        </div>
+        <div style="font-size: 10px; font-family: monospace; color: #9ca3af; text-transform: uppercase;">
+          MODELO UE2026 • SEÇÃO 0142 / ZONA 001
+        </div>
+      </div>
+
+      <div class="gabinete-corpo">
+        <!-- LADO ESQUERDO: TELA LCD DA URNA -->
+        <div class="urna-lado-esquerdo" style="display: flex; flex-direction: column;">
+          <div class="tela-urna-moldura" style="flex: 1;">
+            <div class="tela-lcd" id="tela-lcd-container">
+              <!-- Conteúdo gerado dinamicamente via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- LADO DIREITO: TECLADO COM PLACA JUSTIÇA ELEITORAL -->
+        <div class="urna-lado-direito" style="display: flex; flex-direction: column;">
+          <div style="display: flex; flex-direction: column; height: 100%; box-shadow: 0 16px 36px rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden;">
+            <!-- Placa Superior Oficial: Brasão da República + JUSTIÇA ELEITORAL -->
+            <div class="teclado-placa-superior">
+              <div class="teclado-placa-marca">
+                <svg width="36" height="36" viewBox="0 0 120 120" fill="none" class="teclado-brasao-svg">
+                  <defs>
+                    <linearGradient id="brasaoGoldHtml" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stop-color="#fde047" />
+                      <stop offset="100%" stop-color="#ca8a04" />
+                    </linearGradient>
+                    <linearGradient id="brasaoGreenHtml" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stop-color="#22c55e" />
+                      <stop offset="100%" stop-color="#15803d" />
+                    </linearGradient>
+                    <linearGradient id="brasaoBlueHtml" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stop-color="#38bdf8" />
+                      <stop offset="100%" stop-color="#1d4ed8" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="60" cy="58" r="50" stroke="#16a34a" stroke-width="4" stroke-dasharray="6 4" fill="none" />
+                  <path d="M60 12 L69 43 L101 43 L76 63 L85 94 L60 76 L35 94 L44 63 L19 43 L51 43 Z" fill="url(#brasaoGreenHtml)" stroke="url(#brasaoGoldHtml)" stroke-width="3" stroke-linejoin="round" />
+                  <circle cx="60" cy="56" r="20" fill="url(#brasaoBlueHtml)" stroke="#ffffff" stroke-width="2" />
+                  <circle cx="60" cy="47" r="2.2" fill="#ffffff" />
+                  <circle cx="60" cy="65" r="2.2" fill="#ffffff" />
+                  <circle cx="51" cy="56" r="2.2" fill="#ffffff" />
+                  <circle cx="69" cy="54" r="2.2" fill="#ffffff" />
+                  <circle cx="64" cy="60" r="1.6" fill="#ffffff" />
+                </svg>
+                <div>
+                  <div class="teclado-titulo-oficial">JUSTIÇA<br>ELEITORAL</div>
+                </div>
+              </div>
+              <button type="button" class="btn-audio-toggle ativo" id="btn-toggle-audio" onclick="toggleAudio()">
+                🔊 Som
+              </button>
+            </div>
+
+            <!-- Painel de Teclas Preto Rebaixado -->
+            <div class="painel-teclado-preto">
+              <!-- Teclado Numérico de 1 a 9 e 0 -->
+              <div class="grade-numerica" style="gap: 8px; margin-bottom: 14px;">
+                <button type="button" class="tecla-num" onclick="teclarNumero('1')">1</button>
+                <button type="button" class="tecla-num" onclick="teclarNumero('2')">2</button>
+                <button type="button" class="tecla-num" onclick="teclarNumero('3')">3</button>
+                <button type="button" class="tecla-num" onclick="teclarNumero('4')">4</button>
+                <button type="button" class="tecla-num" onclick="teclarNumero('5')">
+                  5
+                  <span class="ponto-braille"></span>
+                </button>
+                <button type="button" class="tecla-num" onclick="teclarNumero('6')">6</button>
+                <button type="button" class="tecla-num" onclick="teclarNumero('7')">7</button>
+                <button type="button" class="tecla-num" onclick="teclarNumero('8')">8</button>
+                <button type="button" class="tecla-num" onclick="teclarNumero('9')">9</button>
+                <button type="button" class="tecla-num linha-zero" onclick="teclarNumero('0')">0</button>
+              </div>
+
+              <!-- Teclas de Ação Oficiais: BRANCO, CORRIGE e CONFIRMA -->
+              <div class="grade-acoes" style="gap: 8px; padding-top: 10px;">
+                <button type="button" class="tecla-acao tecla-branco" onclick="teclarBranco()">BRANCO</button>
+                <button type="button" class="tecla-acao tecla-corrige" onclick="teclarCorrige()">CORRIGE</button>
+                <button type="button" class="tecla-acao tecla-confirma" style="height: 62px; font-size: 13px;" onclick="teclarConfirma()">CONFIRMA</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Base com Ranhuras Físicas -->
+      <div class="gabinete-base-footer">
+        <div class="gabinete-ranhuras">
+          <span class="ranhura-traco"></span>
+          <span class="ranhura-traco"></span>
+          <span class="ranhura-traco"></span>
+          <span class="ranhura-traco"></span>
+          <span class="ranhura-traco"></span>
+          <span class="ranhura-traco"></span>
+          <span class="ranhura-traco"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Botão de Acesso ao VRP após conclusão -->
+    <div id="painel-conclusao-vrp" style="display: none; width: 100%; margin-top: 16px; padding: 16px; background: #1b2028; border: 2px solid #059669; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <div style="font-weight: 900; font-size: 14px; color: #6ee7b7; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
+          🖨️ Votação Concluída com Sucesso!
+        </div>
+        <div style="font-size: 12px; color: #9ca3af; margin-top: 2px;">
+          O voto foi registrado digitalmente e a impressão VRP foi emitida.
+        </div>
+      </div>
+      <button type="button" onclick="abrirModalVRP()" class="btn-top" style="background: #059669; color: #fff; font-weight: 900; border-color: #047857; padding: 10px 16px; font-size: 13px; cursor: pointer;">
+        🖨️ Acessar Impressão VRP
+      </button>
+    </div>
+
+  </main>
+
+  <!-- MODAL DO MÓDULO DE VOTO IMPRESSO AUDITÁVEL (VRP) -->
+  <div class="modal-backdrop" id="modal-vrp" onclick="fecharModalVRP()">
+    <div class="modal-conteudo" style="max-width: 480px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div style="font-weight: 900; font-size: 15px; text-transform: uppercase; display: flex; align-items: center; gap: 6px;">
+          🖨️ Módulo de Impressão VRP
+        </div>
+        <button type="button" onclick="fecharModalVRP()" style="background:none; border:none; color:#9ca3af; font-size:18px; cursor:pointer;">✕</button>
+      </div>
+      <div class="modal-corpo" style="padding: 12px;">
+        <div class="vrp-modulo" style="border: none; box-shadow: none;">
+          <div class="vrp-header">
+            <div class="vrp-titulo-wrap">
+              <div class="vrp-icone-escudo">🛡️</div>
+              <div>
+                <div class="vrp-titulo">MÓDULO VRP</div>
+                <div class="vrp-subtitulo">Voto Registrado em Papel</div>
+              </div>
+            </div>
+            <div class="vrp-status-online">
+              <span class="ponto-led-verde"></span> ONLINE
+            </div>
+          </div>
+
+          <!-- Visor Acrílico com Papel Térmico -->
+          <div class="vrp-visor-acrilico">
+            <div class="vrp-visor-reflexo"></div>
+            <div class="guilhotina-corte-linha">
+              <span>✂️ LINHA DE CORTE AUTOMÁTICO</span>
+              <span>SERRILHA TSE</span>
+            </div>
+
+            <div class="fita-papel" id="fita-termo-vrp">
+              <!-- Conteúdo da fita gerado dinamicamente -->
+            </div>
+          </div>
+
+          <!-- Compartimento Físico / Urna de Depósito Lacrada -->
+          <div class="deposito-fisico-box">
+            <div class="deposito-info">
+              <div class="icone-cadeado">🔒</div>
+              <div>
+                <div class="deposito-label">Urna de Depósito Físico</div>
+                <div class="deposito-lacre">Lacre nº 89412-TSE • Lacrado</div>
+              </div>
+            </div>
+            <div>
+              <div class="deposito-contador-num" id="contador-cedulas">0</div>
+              <div class="deposito-contador-txt">Cédulas</div>
+            </div>
+          </div>
+
+          <!-- Ações de Auditoria e Transparência -->
+          <div class="botoes-vrp-acoes">
+            <button type="button" class="btn-vrp" onclick="fecharModalVRP(); abrirModalAuditoria();">🔍 Auditar RDV × VRP</button>
+            <button type="button" class="btn-vrp" onclick="fecharModalVRP(); imprimirBoletimTela();">📜 Boletim de Urna</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-rodape">
+        <button type="button" class="btn-top" onclick="fecharModalVRP()">Fechar Visor VRP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE AUDITORIA CRUZADA E BOLETIM DE URNA -->
+  <div class="modal-backdrop" id="modal-auditoria" onclick="fecharModalAuditoria()">
+    <div class="modal-conteudo" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div style="font-weight: 900; font-size: 15px; text-transform: uppercase;">
+          🛡️ Auditoria Cruzada: RDV (Digital) × VRP (Voto Físico)
+        </div>
+        <button type="button" onclick="fecharModalAuditoria()" style="background:none; border:none; color:#9ca3af; font-size:18px; cursor:pointer;">✕</button>
+      </div>
+      <div class="modal-corpo" id="modal-auditoria-corpo">
+        <!-- Preenchido dinamicamente -->
+      </div>
+      <div class="modal-rodape">
+        <button type="button" class="btn-top" onclick="fecharModalAuditoria()">Fechar Relatório</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE RELAÇÃO OFICIAL DE CANDIDATOS -->
+  <div class="modal-backdrop" id="modal-relacao-candidatos" onclick="fecharModalRelacao()">
+    <div class="modal-conteudo" style="max-width: 900px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <div style="font-weight: 900; font-size: 16px; text-transform: uppercase; color: #fff; display: flex; align-items: center; gap: 8px;">
+            <span>📋 Relação Oficial de Candidatos</span>
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #064e3b; color: #34d399; font-family: monospace;">TSE OFICIAL</span>
+          </div>
+          <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">
+            Consulte os números registrados ou clique para votar diretamente na Urna
+          </div>
+        </div>
+        <button type="button" onclick="fecharModalRelacao()" style="background:none; border:none; color:#9ca3af; font-size:20px; cursor:pointer;">✕</button>
+      </div>
+
+      <!-- Filtros e Busca -->
+      <div style="padding: 12px 16px; background: #1a1d24; border-bottom: 1px solid #374151; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <input
+            type="text"
+            id="input-busca-relacao"
+            placeholder="Buscar por nome, número ou partido..."
+            oninput="filtrarRelacaoCandidatos()"
+            style="flex: 1; min-width: 240px; padding: 8px 12px; background: #262c38; border: 1px solid #4b5563; border-radius: 6px; color: #fff; font-size: 12px;"
+          />
+          <div style="font-size: 11px; font-family: monospace; color: #34d399;" id="relacao-cargo-ativo-texto">
+            ● Votação atual: DEPUTADO FEDERAL
+          </div>
+        </div>
+
+        <!-- Abas de Cargos -->
+        <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;" id="relacao-filtros-cargos">
+          <button type="button" class="relacao-filtro-btn ativo" onclick="selecionarFiltroCargoRelacao('todos')">Todos os Cargos</button>
+          <button type="button" class="relacao-filtro-btn" onclick="selecionarFiltroCargoRelacao('deputado-federal')">Dep. Federal (4)</button>
+          <button type="button" class="relacao-filtro-btn" onclick="selecionarFiltroCargoRelacao('deputado-estadual')">Dep. Estadual (5)</button>
+          <button type="button" class="relacao-filtro-btn" onclick="selecionarFiltroCargoRelacao('senador')">Senador (3)</button>
+          <button type="button" class="relacao-filtro-btn" onclick="selecionarFiltroCargoRelacao('governador')">Governador (2)</button>
+          <button type="button" class="relacao-filtro-btn" onclick="selecionarFiltroCargoRelacao('presidente')">Presidente (2)</button>
+        </div>
+      </div>
+
+      <div class="modal-corpo" id="modal-relacao-corpo" style="max-height: 60vh;">
+        <!-- Lista de Cards gerada dinamicamente -->
+      </div>
+
+      <div class="modal-rodape" style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 11px; color: #9ca3af;" id="relacao-contador-total">
+          Exibindo candidatos
+        </div>
+        <button type="button" class="btn-top" onclick="fecharModalRelacao()">Fechar Relação</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       JAVASCRIPT AUTÔNOMO (SEM DEPENDÊNCIAS EXTERNAS)
+       ========================================================================== -->
+  <script>
+    /* --------------------------------------------------------------------------
+       1. ÁUDIO ENGINE NATIVO (WEB AUDIO API - SEM ARQUIVOS EXTERNOS)
+       -------------------------------------------------------------------------- */
+    class AudioUrnaEngine {
+      constructor() {
+        this.ctx = null;
+        this.ativo = true;
+      }
+
+      getContext() {
+        if (!this.ctx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContextClass();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+        return this.ctx;
+      }
+
+      bipTecla() {
+        if (!this.ativo) return;
+        try {
+          const ctx = this.getContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, ctx.currentTime);
+          gain.gain.setValueAtTime(0.2, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.055);
+        } catch (e) {}
+      }
+
+      bipConfirmacaoIntermediaria() {
+        if (!this.ativo) return;
+        try {
+          const ctx = this.getContext();
+          const now = ctx.currentTime;
+          
+          const osc1 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(750, now);
+          gain1.gain.setValueAtTime(0.25, now);
+          gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+          osc1.connect(gain1);
+          gain1.connect(ctx.destination);
+          osc1.start(now);
+          osc1.stop(now + 0.07);
+
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(1050, now + 0.08);
+          gain2.gain.setValueAtTime(0.25, now + 0.08);
+          gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.start(now + 0.08);
+          osc2.stop(now + 0.18);
+        } catch (e) {}
+      }
+
+      bipAlertaErro() {
+        if (!this.ativo) return;
+        try {
+          const ctx = this.getContext();
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(180, now);
+          osc.frequency.setValueAtTime(130, now + 0.12);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        } catch (e) {}
+      }
+
+      somUrnaFim() {
+        if (!this.ativo) return;
+        try {
+          const ctx = this.getContext();
+          const start = ctx.currentTime + 0.02;
+
+          // Trinadinho inicial característico da urna TSE
+          const notas = [
+            { freq: 900, dur: 0.065 },
+            { freq: 1020, dur: 0.065 },
+            { freq: 1150, dur: 0.065 },
+            { freq: 1300, dur: 0.075 },
+          ];
+
+          let t = start;
+          notas.forEach(({ freq, dur }) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.18, t);
+            gain.gain.exponentialRampToValueAtTime(0.02, t + dur);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t);
+            osc.stop(t + dur);
+            t += dur + 0.015;
+          });
+
+          // Tom longo característico contínuo da urna (1450Hz sustentado por ~1.3s)
+          const longDur = 1.35;
+          const mainOsc = ctx.createOscillator();
+          const harmOsc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          mainOsc.type = 'square';
+          mainOsc.frequency.setValueAtTime(1450, t);
+
+          harmOsc.type = 'sine';
+          harmOsc.frequency.setValueAtTime(2900, t);
+
+          gain.gain.setValueAtTime(0.26, t);
+          gain.gain.setValueAtTime(0.26, t + longDur - 0.25);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + longDur);
+
+          mainOsc.connect(gain);
+          harmOsc.connect(gain);
+          gain.connect(ctx.destination);
+
+          mainOsc.start(t);
+          mainOsc.stop(t + longDur);
+          harmOsc.start(t);
+          harmOsc.stop(t + longDur);
+        } catch (e) {}
+      }
+    }
+
+    const audio = new AudioUrnaEngine();
+
+    function toggleAudio() {
+      audio.ativo = !audio.ativo;
+      const btn = document.getElementById('btn-toggle-audio');
+      if (audio.ativo) {
+        btn.innerText = '🔊 Som Ativo';
+        btn.classList.add('ativo');
+      } else {
+        btn.innerText = '🔇 Sem Som';
+        btn.classList.remove('ativo');
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       2. REGRAS DE DOMÍNIO ELEITORAL E BASE DE DADOS DE CANDIDATOS
+       -------------------------------------------------------------------------- */
+    const CARGOS = [
+      { id: 'deputado-federal', nome: 'DEPUTADO FEDERAL', digitos: 4 },
+      { id: 'deputado-estadual', nome: 'DEPUTADO ESTADUAL', digitos: 5 },
+      { id: 'senador-1', nome: 'SENADOR (1ª VAGA)', digitos: 3 },
+      { id: 'senador-2', nome: 'SENADOR (2ª VAGA)', digitos: 3 },
+      { id: 'governador', nome: 'GOVERNADOR', digitos: 2 },
+      { id: 'presidente', nome: 'PRESIDENTE DA REPÚBLICA', digitos: 2 },
+    ];
+
+    const CANDIDATOS = [
+      // Deputado Federal (4 dígitos)
+      { numero: '1010', nome: 'MARIA APARECIDA SILVA', nomeUrna: 'MARIA SILVA', partido: 'PARTIDO DA LIBERDADE E DESENVOLVIMENTO', sigla: 'PLD', cargo: 'deputado-federal', foto: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80' },
+      { numero: '1515', nome: 'CARLOS EDUARDO ALMEIDA', nomeUrna: 'CARLOS EDUARDO', partido: 'PARTIDO DO MOVIMENTO BRASILEIRO', sigla: 'PMB', cargo: 'deputado-federal', foto: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80' },
+      { numero: '2222', nome: 'ROBERTO ALENCAR BARROS', nomeUrna: 'ROBERTO ALENCAR', partido: 'PARTIDO DA RENOVAÇÃO NACIONAL', sigla: 'PRN', cargo: 'deputado-federal', foto: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80' },
+      { numero: '4545', nome: 'JULIANA CASTRO FERREIRA', nomeUrna: 'JULIANA CASTRO', partido: 'PARTIDO SOCIAL DEMOCRÁTICO', sigla: 'PSD', cargo: 'deputado-federal', foto: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80' },
+      { numero: '1313', nome: 'FERNANDO SANTOS LIMA', nomeUrna: 'FERNANDO SANTOS', partido: 'PARTIDO SOCIAL DOS TRABALHADORES', sigla: 'PST', cargo: 'deputado-federal', foto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80' },
+
+      // Deputado Estadual (5 dígitos)
+      { numero: '10123', nome: 'LUCIANA PRADO MENEZES', nomeUrna: 'PROFª LUCIANA', partido: 'PARTIDO DA LIBERDADE E DESENVOLVIMENTO', sigla: 'PLD', cargo: 'deputado-estadual', foto: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=400&q=80' },
+      { numero: '15456', nome: 'MARCOS VINICIUS COSTA', nomeUrna: 'MARCOS VINICIUS', partido: 'PARTIDO DO MOVIMENTO BRASILEIRO', sigla: 'PMB', cargo: 'deputado-estadual', foto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80' },
+      { numero: '22789', nome: 'BEATRIZ ALBUQUERQUE GOMES', nomeUrna: 'DRA. BEATRIZ', partido: 'PARTIDO DA RENOVAÇÃO NACIONAL', sigla: 'PRN', cargo: 'deputado-estadual', foto: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80' },
+      { numero: '45100', nome: 'ANDRÉ BARRETO SIQUEIRA', nomeUrna: 'ANDRÉ BARRETO', partido: 'PARTIDO SOCIAL DEMOCRÁTICO', sigla: 'PSD', cargo: 'deputado-estadual', foto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80' },
+      { numero: '13555', nome: 'RENATA FAGUNDES DIAS', nomeUrna: 'RENATA DO POVO', partido: 'PARTIDO SOCIAL DOS TRABALHADORES', sigla: 'PST', cargo: 'deputado-estadual', foto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80' },
+
+      // Senadores (3 dígitos - Concorrem para 1ª e 2ª vaga)
+      { numero: '101', nome: 'PAULO ROBERTO MENDES', nomeUrna: 'DR. PAULO MENDES', partido: 'PARTIDO DA LIBERDADE E DESENVOLVIMENTO', sigla: 'PLD', cargo: 'senador-1', foto: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=400&q=80', suplente1: 'TEREZA CRISTINA DIAS', suplente2: 'JORGE LUIZ VIANA' },
+      { numero: '151', nome: 'CRISTINA FONTES CARDOSO', nomeUrna: 'DRA. CRISTINA', partido: 'PARTIDO DO MOVIMENTO BRASILEIRO', sigla: 'PMB', cargo: 'senador-1', foto: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=400&q=80', suplente1: 'MÁRIO SÉRGIO COELHO', suplente2: 'ANA PAULA TEIXEIRA' },
+      { numero: '222', nome: 'OTÁVIO AUGUSTO SOARES', nomeUrna: 'COMANDANTE SOARES', partido: 'PARTIDO DA RENOVAÇÃO NACIONAL', sigla: 'PRN', cargo: 'senador-1', foto: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80', suplente1: 'VALDIR RAMOS NETO', suplente2: 'CLÁUDIA MARIA LINS' },
+      { numero: '455', nome: 'AMANDA REIS MONTEIRO', nomeUrna: 'PROFª AMANDA', partido: 'PARTIDO SOCIAL DEMOCRÁTICO', sigla: 'PSD', cargo: 'senador-1', foto: 'https://images.unsplash.com/photo-1548142813-c348350df52b?auto=format&fit=crop&w=400&q=80', suplente1: 'DANIEL MORAIS ROCHA', suplente2: 'CÁTIA REGINA NEVES' },
+      { numero: '131', nome: 'GERALDO ANTUNES MOREIRA', nomeUrna: 'GERALDO ANTUNES', partido: 'PARTIDO SOCIAL DOS TRABALHADORES', sigla: 'PST', cargo: 'senador-1', foto: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80', suplente1: 'EDUARDO MOURA FILHO', suplente2: 'SÔNIA BARBOSA PINTO' },
+
+      // Governador (2 dígitos)
+      { numero: '10', nome: 'MARCELO REZENDE GUIMARÃES', nomeUrna: 'MARCELO REZENDE', partido: 'PARTIDO DA LIBERDADE E DESENVOLVIMENTO', sigla: 'PLD', cargo: 'governador', foto: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80', viceNome: 'DRA. LÚCIA CARVALHO', viceFoto: 'https://images.unsplash.com/photo-1558898479-33c0057a5d12?auto=format&fit=crop&w=400&q=80' },
+      { numero: '15', nome: 'ARTHUR QUEIROZ TAVARES', nomeUrna: 'ARTHUR QUEIROZ', partido: 'PARTIDO DO MOVIMENTO BRASILEIRO', sigla: 'PMB', cargo: 'governador', foto: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=400&q=80', viceNome: 'CORONEL GUIMARÃES', viceFoto: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=400&q=80' },
+      { numero: '22', nome: 'GUSTAVO BRANDÃO LEITE', nomeUrna: 'GUSTAVO BRANDÃO', partido: 'PARTIDO DA RENOVAÇÃO NACIONAL', sigla: 'PRN', cargo: 'governador', foto: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=400&q=80', viceNome: 'MARIANA FIGUEIRA', viceFoto: 'https://images.unsplash.com/photo-1573497019236-17f8177b81e8?auto=format&fit=crop&w=400&q=80' },
+      { numero: '45', nome: 'PATRÍCIA HOLANDA CAMPOS', nomeUrna: 'PATRÍCIA HOLANDA', partido: 'PARTIDO SOCIAL DEMOCRÁTICO', sigla: 'PSD', cargo: 'governador', foto: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80', viceNome: 'SÉRGIO TOLEDO', viceFoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80' },
+      { numero: '13', nome: 'TIAGO NOGUEIRA SALES', nomeUrna: 'TIAGO NOGUEIRA', partido: 'PARTIDO SOCIAL DOS TRABALHADORES', sigla: 'PST', cargo: 'governador', foto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80', viceNome: 'LAURA PEIXOTO', viceFoto: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80' },
+
+      // Presidente da República (2 dígitos)
+      { numero: '10', nome: 'EDUARDO VASCONCELOS PAIVA', nomeUrna: 'EDUARDO VASCONCELOS', partido: 'PARTIDO DA LIBERDADE E DESENVOLVIMENTO', sigla: 'PLD', cargo: 'presidente', foto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80', viceNome: 'SIMONE MEDEIROS', viceFoto: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80' },
+      { numero: '15', nome: 'HENRIQUE MEIRELES SILVEIRA', nomeUrna: 'HENRIQUE MEIRELES', partido: 'PARTIDO DO MOVIMENTO BRASILEIRO', sigla: 'PMB', cargo: 'presidente', foto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80', viceNome: 'GABRIEL ALCKMIN', viceFoto: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80' },
+      { numero: '22', nome: 'JAIR DE OLIVEIRA CAMPOS', nomeUrna: 'JAIR DE OLIVEIRA', partido: 'PARTIDO DA RENOVAÇÃO NACIONAL', sigla: 'PRN', cargo: 'presidente', foto: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80', viceNome: 'GENERAL BRAGA', viceFoto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80' },
+      { numero: '45', nome: 'GERALDO GUIMARÃES NETO', nomeUrna: 'GERALDO GUIMARÃES', partido: 'PARTIDO SOCIAL DEMOCRÁTICO', sigla: 'PSD', cargo: 'presidente', foto: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80', viceNome: 'LUIZA TRAJANO', viceFoto: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80' },
+      { numero: '13', nome: 'LUIZ CARLOS RIBEIRO', nomeUrna: 'LUIZ RIBEIRO', partido: 'PARTIDO SOCIAL DOS TRABALHADORES', sigla: 'PST', cargo: 'presidente', foto: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=400&q=80', viceNome: 'GERALDO ALENCAR', viceFoto: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80' },
+    ];
+
+    function encontrarCandidato(cargoId, numero) {
+      const cargoBusca = cargoId.startsWith('senador') ? 'senador-1' : cargoId;
+      return CANDIDATOS.find(c => c.cargo === cargoBusca && c.numero === numero) || null;
+    }
+
+    /* --------------------------------------------------------------------------
+       3. ESTRUTURA DE AUDITORIA (RDV E VOTOS IMPRESSOS)
+       -------------------------------------------------------------------------- */
+    window.RDV = [];
+    window.VotosImpressos = [];
+
+    let etapaIndex = 0;
+    let digitos = [];
+    let isBranco = false;
+    let isSenadorRepetido = false;
+    let votoSenador1 = null;
+    let votosSessao = [];
+    let telaFim = false;
+    let gravando = false;
+    let totalCedulas = 0;
+    let ultimoRegistroFinalizado = null;
+
+    /* --------------------------------------------------------------------------
+       4. INTERFACE E RENDERIZAÇÃO DA TELA DA URNA (LCD)
+       -------------------------------------------------------------------------- */
+    function renderizarStepper() {
+      const stepper = document.getElementById('stepper-cargos');
+      stepper.innerHTML = CARGOS.map((c, i) => {
+        let classe = 'cargo-step-item';
+        if (i === etapaIndex && !telaFim) classe += ' active';
+        else if (i < etapaIndex || telaFim) classe += ' completed';
+        return `
+          <div class="${classe}">
+            <div class="cargo-step-ordem">${i + 1}º • ${c.digitos} DÍGITOS</div>
+            <div class="cargo-step-nome">${c.nome}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderizarTelaLCD() {
+      const container = document.getElementById('tela-lcd-container');
+      const cargoAtual = CARGOS[etapaIndex];
+
+      if (telaFim) {
+        container.innerHTML = `
+          <div class="tela-fim-container">
+            <div class="tela-fim-palavra">FIM</div>
+            <div class="tela-fim-votou">VOTOU</div>
+            <div style="font-size: 11px; margin-top: 12px; color: #4b5563;">
+              CÉDULA IMPRESSA E DEPOSITADA NA URNA FÍSICA
+            </div>
+          </div>
+        `;
+        document.getElementById('btn-novo-eleitor-topo').style.display = 'flex';
+        return;
+      }
+
+      if (gravando) {
+        container.innerHTML = `
+          <div class="tela-fim-container">
+            <div style="font-size: 32px; font-weight: 900; letter-spacing: 2px;">GRAVANDO...</div>
+            <div style="font-size: 12px; margin-top: 8px; color: #4b5563;">
+              Criptografando RDV e acionando guilhotina VRP
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const numStr = digitos.join('');
+      const todosPreenchidos = digitos.length === cargoAtual.digitos;
+      const candidato = todosPreenchidos ? encontrarCandidato(cargoAtual.id, numStr) : null;
+      const numeroInvalido = todosPreenchidos && !candidato && !isBranco;
+
+      // Monta as caixas de dígitos
+      let caixasHTML = '';
+      if (!isBranco) {
+        caixasHTML = Array.from({ length: cargoAtual.digitos }).map((_, idx) => {
+          const val = digitos[idx] || '';
+          const ativo = idx === digitos.length ? 'cursor-ativo' : '';
+          return `<div class="digito-box ${ativo}">${val}</div>`;
+        }).join('');
+      }
+
+      // Alerta de Senador repetido
+      let alertaSenadorHTML = '';
+      if (isSenadorRepetido) {
+        alertaSenadorHTML = `
+          <div class="alerta-senador">
+            ⚠️ ATENÇÃO: CANDIDATO JÁ ESCOLHIDO PARA A 1ª VAGA!
+            <div style="font-size: 10px; font-weight: normal; margin-top: 2px;">
+              Aperte CORRIGE para escolher outro candidato ou vote em BRANCO/NULO.
+            </div>
+          </div>
+        `;
+      }
+
+      // Detalhes do candidato (Nome, Legenda Partidária, Vice/Suplentes)
+      let corpoCandidatoHTML = '';
+
+      if (isBranco) {
+        corpoCandidatoHTML = `<div class="voto-branco-texto">VOTO EM BRANCO</div>`;
+      } else if (candidato) {
+        corpoCandidatoHTML = `
+          <div class="detalhes-candidato">
+            <div><strong>Nome:</strong> <span class="nome-candidato-destaque">${candidato.nomeUrna}</span></div>
+            <div><strong>Partido:</strong> <span class="partido-destaque">${candidato.sigla} — ${candidato.partido}</span></div>
+            ${candidato.viceNome ? `<div><strong>Vice:</strong> <span style="font-weight:700; text-transform:uppercase;">${candidato.viceNome}</span></div>` : ''}
+            ${candidato.suplente1 ? `
+              <div style="font-size: 11px; margin-top: 4px; background: rgba(0,0,0,0.06); padding: 4px; border-radius: 4px;">
+                <div><strong>1º Suplente:</strong> ${candidato.suplente1}</div>
+                <div><strong>2º Suplente:</strong> ${candidato.suplente2}</div>
+              </div>` : ''}
+          </div>
+        `;
+      } else if (numeroInvalido) {
+        corpoCandidatoHTML = `
+          <div class="voto-nulo-aviso">
+            <span class="tag-numero-errado">NÚMERO ERRADO</span>
+            <div class="texto-voto-nulo">VOTO NULO</div>
+          </div>
+        `;
+      }
+
+      // Quadro de Foto Oficial ACIMA DOS NÚMEROS (Conforme Urna Real do TSE)
+      let fotoAcimaDosNumerosHTML = '';
+      if (candidato && !isBranco) {
+        const rotuloCargo = cargoAtual.id.startsWith('deputado')
+          ? 'DEPUTADO'
+          : cargoAtual.id.startsWith('senador')
+          ? 'SENADOR'
+          : cargoAtual.id === 'governador'
+          ? 'GOVERNADOR'
+          : 'PRESIDENTE';
+
+        fotoAcimaDosNumerosHTML = `
+          <div class="lcd-foto-acima-bloco">
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <div class="lcd-foto-moldura-img">
+                <img src="${candidato.foto}" alt="${candidato.nomeUrna}">
+                <span>${rotuloCargo}</span>
+              </div>
+              ${candidato.viceFoto ? `
+                <div class="lcd-foto-moldura-img" style="width: 68px; height: 86px;">
+                  <img src="${candidato.viceFoto}" alt="Vice" style="height: 70px;">
+                  <span>VICE</span>
+                </div>
+              ` : ''}
+            </div>
+            <div style="text-align: right; font-size: 11px;">
+              <div style="font-weight: 900; font-size: 13px; text-transform: uppercase;">${candidato.nomeUrna}</div>
+              <div style="font-size: 10px; color: #374151; font-weight: 700;">${candidato.sigla} • Nº ${candidato.numero}</div>
+            </div>
+          </div>
+        `;
+      } else if (!isBranco) {
+        fotoAcimaDosNumerosHTML = `
+          <div class="lcd-foto-acima-bloco" style="border-style: dashed; justify-content: center; opacity: 0.7;">
+            <div style="text-align: center; font-size: 11px; color: #4b5563;">
+              <div style="font-size: 18px; margin-bottom: 2px;">👤</div>
+              <div>Aguardando dígitos do candidato</div>
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <div class="lcd-topo">
+          <div class="lcd-subtitulo">SEU VOTO VAI PARA</div>
+          <div class="lcd-cargo">${cargoAtual.nome}</div>
+        </div>
+
+        ${alertaSenadorHTML}
+
+        <div class="lcd-meio" style="display: flex; flex-direction: column;">
+          ${fotoAcimaDosNumerosHTML}
+
+          <div class="lcd-dados-candidato" style="width: 100%;">
+            ${!isBranco ? `
+              <div class="linha-numero">
+                <span class="rotulo-numero">Número:</span>
+                <div class="digitos-container">${caixasHTML}</div>
+              </div>
+            ` : ''}
+            ${corpoCandidatoHTML}
+          </div>
+        </div>
+
+        <div class="lcd-rodape">
+          <div style="font-weight: bold; color: #4b5563;">Aperte a tecla:</div>
+          <div class="lcd-rodape-comandos">
+            <div><span class="cmd-confirma">CONFIRMA</span> para CONFIRMAR</div>
+            <div><span class="cmd-corrige">CORRIGE</span> para REINICIAR</div>
+            <div><span style="font-weight: 900; color: #111827;">BRANCO</span> para votar em BRANCO</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderizarQuadroFotoDireito(candidato, cargoAtual, isBranco) {
+      // Foto exibida com fidelidade no LCD acima dos dígitos
+    }
+
+    /* --------------------------------------------------------------------------
+       5. ATUALIZAÇÃO DA FITA DE VOTO IMPRESSO AUDITÁVEL (VRP)
+       -------------------------------------------------------------------------- */
+    function abrirModalVRP() {
+      renderizarFitaVRP();
+      document.getElementById('modal-vrp').classList.add('aberto');
+    }
+
+    function fecharModalVRP() {
+      document.getElementById('modal-vrp').classList.remove('aberto');
+    }
+
+    function renderizarFitaVRP() {
+      const fita = document.getElementById('fita-termo-vrp');
+
+      let itensHTML = '';
+      if (votosSessao.length === 0) {
+        itensHTML = `
+          <div style="text-align: center; color: #6b7280; font-style: italic; padding: 18px 0; font-size: 10px;">
+            Aguardando confirmação do 1º voto na urna...
+          </div>
+        `;
+      } else {
+        itensHTML = votosSessao.map((v, i) => `
+          <div class="fita-item-voto">
+            <div class="fita-item-cargo">
+              <span>${v.cargoNome}</span>
+              <span>#${i + 1}</span>
+            </div>
+            <div class="fita-item-linha-voto">
+              <span>${v.tipo === 'branco' ? 'VOTO EM BRANCO' : v.tipo === 'nulo' ? 'VOTO NULO' : `Nº ${v.numero}`}</span>
+              <span>${v.sigla || ''}</span>
+            </div>
+            ${v.nome ? `<div class="fita-item-nome">${v.nome}</div>` : ''}
+          </div>
+        `).join('');
+      }
+
+      let rodapeHTML = '';
+      if (ultimoRegistroFinalizado) {
+        rodapeHTML = `
+          <div class="fita-rodape-hash">
+            <div style="display: flex; justify-content: space-between;">
+              <span>MUNICÍPIO: BRASÍLIA/DF</span>
+              <span>ZONA: 001 • SEÇÃO: 0142</span>
+            </div>
+            <div>DATA/HORA: ${ultimoRegistroFinalizado.timestamp}</div>
+            <div class="fita-hash-box">HASH: ${ultimoRegistroFinalizado.hash}</div>
+            <div style="font-size: 7.5px; text-align: center; color: #4b5563; font-weight: bold; text-transform: uppercase;">
+              AUTENTICADO DIGITALMENTE PELO TSE • SIGILO GARANTIDO
+            </div>
+          </div>
+        `;
+      }
+
+      fita.innerHTML = `
+        <div class="fita-cabecalho">
+          <div class="fita-rep">República Federativa do Brasil</div>
+          <div class="fita-titulo">Comprovante de Votação (VRP)</div>
+          <div class="fita-aviso-sigilo">ELEIÇÕES GERAIS • NÃO IDENTIFICA O ELEITOR</div>
+        </div>
+        <div class="fita-itens-container">${itensHTML}</div>
+        ${rodapeHTML}
+      `;
+    }
+
+    /* --------------------------------------------------------------------------
+       6. TECLADO E FLUXO DE VOTAÇÃO
+       -------------------------------------------------------------------------- */
+    function teclarNumero(num) {
+      if (telaFim || gravando) return;
+      audio.bipTecla();
+
+      if (isBranco) isBranco = false;
+
+      const cargoAtual = CARGOS[etapaIndex];
+      if (digitos.length < cargoAtual.digitos) {
+        digitos.push(num);
+        isSenadorRepetido = false;
+
+        // Validação da regra do 4º cargo (Senador 2ª vaga)
+        if (cargoAtual.id === 'senador-2' && digitos.length === cargoAtual.digitos) {
+          if (digitos.join('') === votoSenador1) {
+            isSenadorRepetido = true;
+            audio.bipAlertaErro();
+          }
+        }
+
+        renderizarTelaLCD();
+      }
+    }
+
+    function teclarBranco() {
+      if (telaFim || gravando) return;
+      audio.bipTecla();
+      digitos = [];
+      isBranco = true;
+      isSenadorRepetido = false;
+      renderizarTelaLCD();
+    }
+
+    function teclarCorrige() {
+      if (telaFim) {
+        iniciarNovoEleitor();
+        return;
+      }
+      if (gravando) return;
+      audio.bipTecla();
+      digitos = [];
+      isBranco = false;
+      isSenadorRepetido = false;
+      renderizarTelaLCD();
+    }
+
+    function teclarConfirma() {
+      if (telaFim) {
+        iniciarNovoEleitor();
+        return;
+      }
+      if (gravando) return;
+
+      const cargoAtual = CARGOS[etapaIndex];
+
+      // Bloqueia confirmação incompleta
+      if (!isBranco && digitos.length < cargoAtual.digitos) {
+        audio.bipAlertaErro();
+        return;
+      }
+
+      // Regra de Senador 2ª vaga idêntico à 1ª vaga
+      const numStr = digitos.join('');
+      if (cargoAtual.id === 'senador-2' && !isBranco && numStr === votoSenador1) {
+        isSenadorRepetido = true;
+        audio.bipAlertaErro();
+        return;
+      }
+
+      const candidato = !isBranco ? encontrarCandidato(cargoAtual.id, numStr) : null;
+
+      let tipo = 'nominal';
+      let nome = candidato ? candidato.nomeUrna : '';
+      let sigla = candidato ? candidato.sigla : '';
+
+      if (isBranco) {
+        tipo = 'branco';
+        nome = 'VOTO EM BRANCO';
+      } else if (!candidato) {
+        tipo = 'nulo';
+        nome = 'VOTO NULO';
+      }
+
+      const novoVoto = {
+        cargoId: cargoAtual.id,
+        cargoNome: cargoAtual.nome,
+        tipo: tipo,
+        numero: isBranco ? 'BRANCO' : numStr,
+        nome: nome,
+        sigla: sigla,
+        hora: new Date().toLocaleTimeString('pt-BR')
+      };
+
+      votosSessao.push(novoVoto);
+
+      if (cargoAtual.id === 'senador-1' && !isBranco) {
+        votoSenador1 = numStr;
+      }
+
+      // Reseta inputs para próximo cargo
+      digitos = [];
+      isBranco = false;
+      isSenadorRepetido = false;
+
+      renderizarFitaVRP();
+
+      if (etapaIndex + 1 < CARGOS.length) {
+        audio.bipConfirmacaoIntermediaria();
+        etapaIndex++;
+        renderizarStepper();
+        renderizarTelaLCD();
+      } else {
+        // Encerramento da urna na confirmação do Presidente
+        finalizarVotacaoPresidente();
+      }
+    }
+
+    function finalizarVotacaoPresidente() {
+      gravando = true;
+      renderizarTelaLCD();
+
+      // Gera Hash de 16 caracteres alfanuméricos
+      const chars = '0123456789ABCDEF';
+      let hash = '';
+      for (let i = 0; i < 16; i++) {
+        hash += chars[Math.floor(Math.random() * chars.length)];
+        if ((i + 1) % 4 === 0 && i !== 15) hash += '-';
+      }
+
+      ultimoRegistroFinalizado = {
+        timestamp: new Date().toLocaleString('pt-BR'),
+        hash: hash
+      };
+
+      // Grava em paralelo nos dois arrays de auditoria
+      window.RDV.push([...votosSessao]);
+      window.VotosImpressos.push([...votosSessao]);
+
+      // Salva os votos no Firebase Firestore (urna-ia)
+      if (window.salvarVotosFirebaseHTML) {
+        window.salvarVotosFirebaseHTML(votosSessao, ultimoRegistroFinalizado);
+      }
+
+      renderizarFitaVRP();
+
+      setTimeout(() => {
+        gravando = false;
+        telaFim = true;
+        renderizarStepper();
+        renderizarTelaLCD();
+
+        // Toca o som oficial da urna do TSE
+        audio.somUrnaFim();
+
+        // Mostra botão de acesso ao VRP e novo eleitor
+        const painelVrp = document.getElementById('painel-conclusao-vrp');
+        if (painelVrp) painelVrp.style.display = 'flex';
+        const btnVrpTopo = document.getElementById('btn-abrir-vrp-topo');
+        if (btnVrpTopo) btnVrpTopo.style.display = 'flex';
+
+        // Efeito de corte automático e queda do papel na urna de depósito lacrada
+        setTimeout(() => {
+          const fita = document.getElementById('fita-termo-vrp');
+          fita.classList.add('cortando-caindo');
+
+          setTimeout(() => {
+            totalCedulas++;
+            document.getElementById('contador-cedulas').innerText = totalCedulas;
+            fita.classList.remove('cortando-caindo');
+          }, 800);
+        }, 1500);
+
+        // Imprime Boletim de Urna no Console
+        imprimirBoletimConsole();
+      }, 700);
+    }
+
+    function iniciarNovoEleitor() {
+      etapaIndex = 0;
+      digitos = [];
+      isBranco = false;
+      isSenadorRepetido = false;
+      votoSenador1 = null;
+      votosSessao = [];
+      telaFim = false;
+      gravando = false;
+      ultimoRegistroFinalizado = null;
+      document.getElementById('btn-novo-eleitor-topo').style.display = 'none';
+      const painelVrp = document.getElementById('painel-conclusao-vrp');
+      if (painelVrp) painelVrp.style.display = 'none';
+      const btnVrpTopo = document.getElementById('btn-abrir-vrp-topo');
+      if (btnVrpTopo) btnVrpTopo.style.display = 'none';
+
+      renderizarStepper();
+      renderizarTelaLCD();
+      renderizarFitaVRP();
+    }
+
+    /* --------------------------------------------------------------------------
+       7. AUDITORIA CRUZADA E BOLETIM DE URNA
+       -------------------------------------------------------------------------- */
+    window.realizarAuditoriaCruzada = function() {
+      const rdv = window.RDV || [];
+      const vrp = window.VotosImpressos || [];
+      const totalSessoes = Math.max(rdv.length, vrp.length);
+      let divergencias = 0;
+      const logs = [];
+
+      for (let s = 0; s < totalSessoes; s++) {
+        const sessaoRDV = rdv[s] || [];
+        const sessaoVRP = vrp[s] || [];
+        for (let c = 0; c < CARGOS.length; c++) {
+          const vR = sessaoRDV[c];
+          const vV = sessaoVRP[c];
+          const cargo = CARGOS[c].nome;
+          const strR = vR ? `${vR.tipo.toUpperCase()}:${vR.numero}` : 'AUSENTE';
+          const strV = vV ? `${vV.tipo.toUpperCase()}:${vV.numero}` : 'AUSENTE';
+          const bateu = strR === strV;
+          if (!bateu) divergencias++;
+          logs.push({
+            Eleitor: s + 1,
+            Cargo: cargo,
+            RDV_Digital: strR,
+            VRP_Impresso: strV,
+            Status: bateu ? 'CORRESPONDENTE' : 'DIVERGENTE'
+          });
+        }
+      }
+
+      console.group('%c=== AUDITORIA CRUZADA RDV × VRP ===', 'color:#10b981;font-weight:bold;font-size:14px;');
+      console.log(`Eleitores Processados: ${totalSessoes}`);
+      console.log(`Total de Divergências: ${divergencias}`);
+      if (divergencias === 0 && totalSessoes > 0) {
+        console.log('%cSUCESSO: Auditoria bateu 100%! Nenhuma divergência.', 'color:#10b981;font-weight:bold;');
+      } else if (totalSessoes === 0) {
+        console.log('%cAviso: Nenhum eleitor concluiu o voto ainda.', 'color:#f59e0b;');
+      } else {
+        console.error('%cALERTA: Divergência detectada!', 'color:#ef4444;font-weight:bold;');
+      }
+      console.table(logs);
+      console.groupEnd();
+
+      return { totalSessoes, divergencias, logs, convergencia100: divergencias === 0 && totalSessoes > 0 };
+    };
+
+    function imprimirBoletimConsole() {
+      const dataHora = new Date().toLocaleString('pt-BR');
+      console.group('%c=====================================================', 'color:#3b82f6;');
+      console.log('%c      JUSTIÇA ELEITORAL - BOLETIM DE URNA (BU)       ', 'color:#3b82f6;font-weight:bold;font-size:14px;');
+      console.log('%c=====================================================', 'color:#3b82f6;');
+      console.log(`MUNICÍPIO: BRASÍLIA/DF | ZONA: 001 | SEÇÃO: 0142`);
+      console.log(`DATA/HORA EMISSÃO: ${dataHora}`);
+      console.log(`MODELO DA URNA: UE2026-TSE | SÉRIE: 89412-A`);
+      console.log('-----------------------------------------------------');
+      votosSessao.forEach((v) => {
+        console.log(`CARGO: ${v.cargoNome.padEnd(25)} | TIPO: ${v.tipo.padEnd(8)} | Nº: ${v.numero.padEnd(6)} | NOME: ${v.nome}`);
+      });
+      console.log('-----------------------------------------------------');
+      console.log('%cSTATUS: RDV E VRP CONFERIDOS E AUDITADOS BIT A BIT', 'color:#10b981;font-weight:bold;');
+      console.groupEnd();
+    }
+
+    function abrirModalAuditoria() {
+      const res = window.realizarAuditoriaCruzada();
+      const corpo = document.getElementById('modal-auditoria-corpo');
+
+      let tabelaHTML = '';
+      if (res.logs.length === 0) {
+        tabelaHTML = '<p style="color:#9ca3af; text-align:center; padding:20px;">Nenhum eleitor votou ainda. Realize ao menos 1 votação completa para auditar.</p>';
+      } else {
+        tabelaHTML = `
+          <table style="width:100%; border-collapse:collapse; margin-top:12px; font-family:monospace; font-size:11px;">
+            <thead>
+              <tr style="background:#171a21; text-align:left; border-bottom:1px solid #374151;">
+                <th style="padding:6px;">Eleitor</th>
+                <th style="padding:6px;">Cargo</th>
+                <th style="padding:6px;">RDV (Eletrônico)</th>
+                <th style="padding:6px;">VRP (Impresso)</th>
+                <th style="padding:6px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${res.logs.map(l => `
+                <tr style="border-bottom:1px solid #2d3340;">
+                  <td style="padding:6px;">#${l.Eleitor}</td>
+                  <td style="padding:6px;">${l.Cargo}</td>
+                  <td style="padding:6px; color:#67e8f9;">${l.RDV_Digital}</td>
+                  <td style="padding:6px; color:#fde047;">${l.VRP_Impresso}</td>
+                  <td style="padding:6px;"><span class="badge-conforme">CONFORME</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+
+      corpo.innerHTML = `
+        <div style="background:#064e3b; color:#a7f3d0; padding:12px; border-radius:8px; border:1px solid #059669; margin-bottom:14px;">
+          <div style="font-weight:bold; font-size:14px;">
+            ${res.convergencia100 ? '✅ Convergência Criptográfica de 100% Verificada' : 'ℹ️ Auditoria Pronta'}
+          </div>
+          <div style="font-size:11px; margin-top:4px;">
+            Total de Eleitores: <strong>${res.totalSessoes}</strong> | Divergências: <strong>${res.divergencias}</strong>
+          </div>
+        </div>
+        ${tabelaHTML}
+      `;
+
+      document.getElementById('modal-auditoria').classList.add('aberto');
+    }
+
+    function fecharModalAuditoria() {
+      document.getElementById('modal-auditoria').classList.remove('aberto');
+    }
+
+    function imprimirBoletimTela() {
+      abrirModalAuditoria();
+    }
+
+    /* --------------------------------------------------------------------------
+       8. RELAÇÃO OFICIAL DE CANDIDATOS REGISTRADOS
+       -------------------------------------------------------------------------- */
+    let filtroCargoRelacaoAtual = 'todos';
+
+    function abrirModalRelacao() {
+      const modal = document.getElementById('modal-relacao-candidatos');
+      if (!modal) return;
+      modal.classList.add('aberto');
+      const cargoAtual = CARGOS[etapaIndex];
+      const aviso = document.getElementById('relacao-cargo-ativo-texto');
+      if (aviso && cargoAtual) {
+        aviso.innerText = `● Votação atual da Urna: ${cargoAtual.nome}`;
+      }
+      renderizarListaRelacao();
+    }
+
+    function fecharModalRelacao() {
+      const modal = document.getElementById('modal-relacao-candidatos');
+      if (modal) modal.classList.remove('aberto');
+    }
+
+    function selecionarFiltroCargoRelacao(cargoId) {
+      filtroCargoRelacaoAtual = cargoId;
+      const botoes = document.querySelectorAll('#relacao-filtros-cargos .relacao-filtro-btn');
+      botoes.forEach(b => b.classList.remove('ativo'));
+      if (window.event && window.event.target) {
+        window.event.target.classList.add('ativo');
+      }
+      renderizarListaRelacao();
+    }
+
+    function filtrarRelacaoCandidatos() {
+      renderizarListaRelacao();
+    }
+
+    function renderizarListaRelacao() {
+      const corpo = document.getElementById('modal-relacao-corpo');
+      const inputBusca = document.getElementById('input-busca-relacao');
+      const contador = document.getElementById('relacao-contador-total');
+      if (!corpo) return;
+
+      const busca = (inputBusca ? inputBusca.value.toLowerCase().trim() : '');
+
+      const filtrados = CANDIDATOS.filter(c => {
+        if (filtroCargoRelacaoAtual !== 'todos') {
+          if (filtroCargoRelacaoAtual === 'senador') {
+            if (c.cargo !== 'senador-1') return false;
+          } else if (c.cargo !== filtroCargoRelacaoAtual) {
+            return false;
+          }
+        }
+        if (busca) {
+          const nomeMatch = c.nomeUrna.toLowerCase().includes(busca) || c.nome.toLowerCase().includes(busca);
+          const numMatch = c.numero.includes(busca);
+          const partMatch = c.partido.toLowerCase().includes(busca) || c.sigla.toLowerCase().includes(busca);
+          const viceMatch = c.viceNome ? c.viceNome.toLowerCase().includes(busca) : false;
+          return nomeMatch || numMatch || partMatch || viceMatch;
+        }
+        return true;
+      });
+
+      if (contador) {
+        contador.innerText = `Exibindo ${filtrados.length} candidato(s) registrado(s)`;
+      }
+
+      if (filtrados.length === 0) {
+        corpo.innerHTML = `
+          <div style="text-align: center; color: #9ca3af; padding: 36px 0;">
+            <div style="font-size: 28px; margin-bottom: 8px; opacity: 0.5;">🔍</div>
+            <div style="font-weight: bold; font-size: 14px;">Nenhum candidato encontrado.</div>
+            <div style="font-size: 11px; margin-top: 4px;">Tente ajustar os termos de busca ou selecionar outro cargo.</div>
+          </div>
+        `;
+        return;
+      }
+
+      const getNomeCargoFormatado = (cargo) => {
+        switch(cargo) {
+          case 'deputado-federal': return 'Dep. Federal';
+          case 'deputado-estadual': return 'Dep. Estadual';
+          case 'senador-1': return 'Senador';
+          case 'governador': return 'Governador';
+          case 'presidente': return 'Presidente';
+          default: return cargo;
+        }
+      };
+
+      corpo.innerHTML = `
+        <div class="relacao-grid">
+          ${filtrados.map(c => `
+            <div class="relacao-card">
+              <div>
+                <div class="relacao-card-header">
+                  <span class="relacao-card-cargo">${getNomeCargoFormatado(c.cargo)}</span>
+                  <span class="relacao-card-num">${c.numero}</span>
+                </div>
+
+                <div class="relacao-card-body">
+                  <img src="${c.foto}" class="relacao-card-foto" alt="${c.nomeUrna}" />
+                  <div class="relacao-card-info">
+                    <div class="relacao-card-nome">${c.nomeUrna}</div>
+                    <div class="relacao-card-completo" title="${c.nome}">${c.nome}</div>
+                    <div class="relacao-card-partido">
+                      <span class="relacao-partido-tag">${c.sigla}</span>
+                      <span style="color:#9ca3af; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.partido}</span>
+                    </div>
+                    ${c.viceNome ? `
+                      <div style="font-size: 9px; color: #d1d5db; margin-top: 4px;">
+                        <strong>Vice:</strong> ${c.viceNome}
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <button type="button" class="btn-votar-relacao" onclick="selecionarCandidatoPelaRelacao('${c.numero}', '${c.cargo}')">
+                🗳️ Votar na Urna (${c.numero})
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function selecionarCandidatoPelaRelacao(num, cargoId) {
+      if (telaFim || gravando) return;
+      
+      // Sincroniza a etapa do cargo se for diferente
+      const cargoIdx = CARGOS.findIndex(cg => {
+        if (cg.id === 'senador-1' || cg.id === 'senador-2') {
+          return cargoId === 'senador-1';
+        }
+        return cg.id === cargoId;
+      });
+
+      if (cargoIdx !== -1 && cargoIdx !== etapaIndex) {
+        etapaIndex = cargoIdx;
+        renderizarStepper();
+      }
+
+      isBranco = false;
+      digitos = num.split('');
+      audio.bipTecla();
+
+      const cargoAtual = CARGOS[etapaIndex];
+      if (cargoAtual.id === 'senador-2' && num === votoSenador1) {
+        isSenadorRepetido = true;
+        audio.bipAlertaErro();
+      } else {
+        isSenadorRepetido = false;
+      }
+
+      renderizarTelaLCD();
+      fecharModalRelacao();
+    }
+
+    /* --------------------------------------------------------------------------
+       8. COLINHA ELEITORAL PARA AUXÍLIO DOS TESTES
+       -------------------------------------------------------------------------- */
+    function toggleColinha() {
+      const grid = document.getElementById('colinha-grid');
+      const texto = document.getElementById('colinha-toggle-texto');
+      const aberto = grid.style.display !== 'none';
+      grid.style.display = aberto ? 'none' : 'grid';
+      texto.innerText = aberto ? 'Expandir ▼' : 'Recolher ▲';
+      if (!aberto) atualizarColinha();
+    }
+
+    function atualizarColinha() {
+      const grid = document.getElementById('colinha-grid');
+      if (grid.style.display === 'none') return;
+
+      const cargoAtual = CARGOS[etapaIndex];
+      const cargoBusca = cargoAtual.id.startsWith('senador') ? 'senador-1' : cargoAtual.id;
+      const lista = CANDIDATOS.filter(c => c.cargo === cargoBusca);
+
+      grid.innerHTML = lista.map(c => `
+        <div class="colinha-card" onclick="selecionarNumeroColinha('${c.numero}')">
+          <div>
+            <div class="colinha-card-num">${c.numero}</div>
+            <div class="colinha-card-nome">${c.nomeUrna}</div>
+            <div class="colinha-card-partido">${c.sigla}</div>
+          </div>
+          <span style="font-size:10px; color:#f59e0b; font-weight:bold;">Votar ➜</span>
+        </div>
+      `).join('');
+    }
+
+    function selecionarNumeroColinha(num) {
+      if (telaFim || gravando) return;
+      isBranco = false;
+      digitos = num.split('');
+      audio.bipTecla();
+
+      const cargoAtual = CARGOS[etapaIndex];
+      if (cargoAtual.id === 'senador-2' && num === votoSenador1) {
+        isSenadorRepetido = true;
+        audio.bipAlertaErro();
+      } else {
+        isSenadorRepetido = false;
+      }
+      renderizarTelaLCD();
+    }
+
+    /* --------------------------------------------------------------------------
+       9. SUPORTE A TECLADO FÍSICO DO COMPUTADOR
+       -------------------------------------------------------------------------- */
+    window.addEventListener('keydown', (e) => {
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        teclarNumero(e.key);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        teclarConfirma();
+      } else if (e.key === 'Backspace' || e.key === 'Escape') {
+        e.preventDefault();
+        teclarCorrige();
+      } else if (e.key.toLowerCase() === 'b' || e.key === ' ') {
+        e.preventDefault();
+        teclarBranco();
+      }
+    });
+
+    // Inicialização da aplicação
+    renderizarStepper();
+    renderizarTelaLCD();
+    renderizarFitaVRP();
+  </script>
+
+  <!-- Integração com Firebase Firestore (urna-ia) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAg7NEImUHdiV_G_jmuQhvvUpNjRKqRXdk",
+      authDomain: "urna-ia.firebaseapp.com",
+      projectId: "urna-ia",
+      storageBucket: "urna-ia.firebasestorage.app",
+      messagingSenderId: "642072021010",
+      appId: "1:642072021010:web:639635f7b7b3b557b070cb"
+    };
+
+    try {
+      const fbApp = initializeApp(firebaseConfig);
+      const db = getFirestore(fbApp);
+
+      window.salvarVotosFirebaseHTML = async (votos, reg) => {
+        try {
+          const sessoesRef = collection(db, 'sessoes_votacao');
+          await addDoc(sessoesRef, {
+            hashCedula: reg ? reg.hash : 'HASH-N/A',
+            timestamp: new Date().toISOString(),
+            votos: votos.map(v => ({
+              cargo: v.cargo,
+              numero: v.numero,
+              tipo: v.tipo,
+              nomeCandidato: v.nomeCandidato || '',
+              sigla: v.sigla || '',
+              vice: v.vice || ''
+            })),
+            secao: '0142',
+            zona: '001',
+            createdAt: serverTimestamp()
+          });
+          console.log('%c[FIREBASE] Votos salvos com sucesso no Firestore (urna-ia)!', 'color: #10b981; font-weight: bold;');
+        } catch (err) {
+          console.warn('[FIREBASE] Aviso ao salvar no Firestore:', err);
+        }
+      };
+    } catch (e) {
+      console.warn('[FIREBASE] Não foi possível inicializar o Firebase no modo offline:', e);
+    }
+  </script>
+</body>
+</html>

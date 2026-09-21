@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "Candidato": {
+      "title": "Candidato Oficial",
+      "description": "Candidato registrado na Justiça Eleitoral para as Eleições Gerais",
+      "type": "object",
+      "properties": {
+        "numero": { "type": "string" },
+        "nome": { "type": "string" },
+        "nomeUrna": { "type": "string" },
+        "partido": { "type": "string" },
+        "siglaPartido": { "type": "string" },
+        "cargo": { "type": "string" },
+        "fotoUrl": { "type": "string" },
+        "vice": { "type": "object" },
+        "suplentes": { "type": "object" }
+      },
+      "required": ["numero", "nome", "nomeUrna", "siglaPartido", "cargo"]
+    },
+    "VotoSessao": {
+      "title": "Sessão de Voto VRP",
+      "description": "Registro de votos e cédula VRP auditável de uma sessão eleitoral",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "hashCedula": { "type": "string" },
+        "numeroSerieUrna": { "type": "string" },
+        "secaoEleitoral": { "type": "string" },
+        "zonaEleitoral": { "type": "string" },
+        "votos": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["timestamp", "hashCedula", "votos"]
+    },
+    "BoletimUrna": {
+      "title": "Boletim de Urna Oficial",
+      "description": "Consolidação de votos apurados por seção e urna",
+      "type": "object",
+      "properties": {
+        "secao": { "type": "string" },
+        "zona": { "type": "string" },
+        "totalEleitores": { "type": "number" },
+        "totalVotosApurados": { "type": "number" },
+        "totaisPorCargo": { "type": "object" },
+        "dataFechamento": { "type": "string" }
+      },
+      "required": ["secao", "zona", "totalVotosApurados"]
+    }
+  },
+  "firestore": {
+    "/candidatos/{candidatoId}": {
+      "allow": {
+        "read": true,
+        "write": true
+      }
+    },
+    "/sessoes_votacao/{sessaoId}": {
+      "allow": {
+        "read": true,
+        "write": true
+      }
+    },
+    "/boletins_urna/{boletimId}": {
+      "allow": {
+        "read": true,
+        "write": true
+      }
+    },
+    "/estatisticas_eleicao/{docId}": {
+      "allow": {
+        "read": true,
+        "write": true
+      }
+    }
+  }
+}
