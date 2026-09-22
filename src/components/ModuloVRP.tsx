@@ -131,6 +131,12 @@ export const ModuloVRP: React.FC<ModuloVRPProps> = ({
           )}
 
           {/* Rodapé do VRP com Dados de Auditoria e Hash */}
+          {!registroFinalizado && votosSessao.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-dashed border-gray-400 text-[9px] text-center text-emerald-800 font-mono font-bold bg-emerald-100/70 p-1.5 rounded">
+              • IMPRESSÃO EM PROGRESSO • CONFERÊNCIA VISUAL DO ELEITOR
+            </div>
+          )}
+
           {registroFinalizado && (
             <div className="mt-2 pt-2 border-t-2 border-dashed border-gray-400 text-[9px] leading-tight space-y-1">
               <div className="flex justify-between text-gray-700">

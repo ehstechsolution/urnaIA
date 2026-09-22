@@ -6,12 +6,16 @@ import { ModuloVRP } from './components/ModuloVRP';
 import { AuditoriaModal } from './components/AuditoriaModal';
 import { urnaAudio } from './utils/audio';
 import { RelacaoCandidatosModal } from './components/RelacaoCandidatosModal';
+import { EditorCandidatosModal } from './components/EditorCandidatosModal';
 import { RotateCcw, ShieldCheck, Printer, Users, X, CloudCheck, CheckCircle2, Database, Wifi } from 'lucide-react';
 import {
   salvarVotoFirebase,
   semearCandidatosFirestore,
   ouvirCandidatosFirestore,
   buscarCandidatoDiretoFirestore,
+  salvarOuAtualizarCandidatoFirestore,
+  excluirCandidatoFirestore,
+  restaurarCandidatosPadraoFirestore,
 } from './firebase';
 
 // Declarar globais para auditoria no console conforme especificação técnica
@@ -59,6 +63,62 @@ export default function App() {
   const [candidatosBanco, setCandidatosBanco] = useState<Candidato[]>(CANDIDATOS_BASE);
   const [dbSincronizado, setDbSincronizado] = useState<boolean>(true);
   const [candidatoBuscadoDireto, setCandidatoBuscadoDireto] = useState<Candidato | null>(null);
+
+  // Modo Administrador / Editor de Candidatos (Desbloqueado com código secreto "001322" no teclado da urna)
+  const [codigoSecretoBuffer, setCodigoSecretoBuffer] = useState<string>('');
+  const [modoAdminAtivo, setModoAdminAtivo] = useState<boolean>(false);
+  const [modalAdminAberto, setModalAdminAberto] = useState<boolean>(false);
+
+  // Salvar / Atualizar candidato via Modo Administrador
+  const handleSalvarCandidatoAdmin = async (
+    candidato: Candidato,
+    antigo?: { cargo: string; numero: string }
+  ): Promise<boolean> => {
+    try {
+      const res = await salvarOuAtualizarCandidatoFirestore(candidato, antigo);
+      setCandidatosBanco((prev) => {
+        const filtrados = prev.filter((c) => {
+          if (antigo) {
+            return !(c.cargo === antigo.cargo && c.numero === antigo.numero);
+          }
+          return !(c.cargo === candidato.cargo && c.numero === candidato.numero);
+        });
+        return [...filtrados, candidato];
+      });
+      return res.sucesso;
+    } catch (err) {
+      console.error('Erro ao salvar candidato admin:', err);
+      return false;
+    }
+  };
+
+  // Excluir candidato via Modo Administrador
+  const handleExcluirCandidatoAdmin = async (cargo: string, numero: string): Promise<boolean> => {
+    try {
+      const res = await excluirCandidatoFirestore(cargo, numero);
+      setCandidatosBanco((prev) =>
+        prev.filter((c) => !(c.cargo === cargo && c.numero === numero))
+      );
+      return res.sucesso;
+    } catch (err) {
+      console.error('Erro ao excluir candidato admin:', err);
+      return false;
+    }
+  };
+
+  // Restaurar candidatos padrão
+  const handleRestaurarPadraoAdmin = async (): Promise<boolean> => {
+    try {
+      const res = await restaurarCandidatosPadraoFirestore();
+      if (res.sucesso) {
+        setCandidatosBanco(CANDIDATOS_BASE);
+      }
+      return res.sucesso;
+    } catch (err) {
+      console.error('Erro ao restaurar candidatos padrão:', err);
+      return false;
+    }
+  };
 
   // Escuta em tempo real a coleção de candidatos no Firestore
   useEffect(() => {
@@ -118,6 +178,46 @@ export default function App() {
 
   const isNumeroInvalido =
     digitosDigitados.length === cargoAtual.digitos && !candidatoSelecionado && !isVotoBranco;
+
+  // Indica se o eleitor já escolheu o primeiro candidato (Deputado Federal)
+  const escolheuPrimeiroCandidato = useMemo(() => {
+    // Se já avançou da primeira etapa ou já registrou votos na sessão ou finalizou a tela
+    if (votosSessao.length > 0 || etapaIndex > 0 || telaFim) {
+      return true;
+    }
+    // Na 1ª etapa (Deputado Federal): verifica se escolheu o candidato, digitou os 4 dígitos ou votou em branco
+    if (etapaIndex === 0) {
+      if (candidatoSelecionado !== null || isVotoBranco) {
+        return true;
+      }
+      if (numeroDigitado.length === cargoAtual.digitos) {
+        return true;
+      }
+    }
+    return false;
+  }, [votosSessao.length, etapaIndex, telaFim, candidatoSelecionado, isVotoBranco, numeroDigitado.length, cargoAtual.digitos]);
+
+  // Lista de votos a exibir no Módulo VRP
+  const listaVotosVrp = useMemo<VotoRegistrado[]>(() => {
+    if (votosSessao.length > 0) {
+      return votosSessao;
+    }
+    if (escolheuPrimeiroCandidato && !telaFim) {
+      const tipoVoto: VotoRegistrado['tipoVoto'] = isVotoBranco ? 'branco' : candidatoSelecionado ? 'nominal' : 'nulo';
+      return [
+        {
+          cargoId: cargoAtual.id,
+          cargoNome: cargoAtual.nome,
+          tipoVoto,
+          numeroVotado: isVotoBranco ? 'BRANCO' : numeroDigitado,
+          candidatoNome: isVotoBranco ? 'VOTO EM BRANCO' : (candidatoSelecionado?.nomeUrna || 'VOTO NULO'),
+          partidoSigla: candidatoSelecionado?.siglaPartido || '',
+          timestamp: new Date().toLocaleTimeString('pt-BR'),
+        },
+      ];
+    }
+    return [];
+  }, [votosSessao, escolheuPrimeiroCandidato, telaFim, cargoAtual, isVotoBranco, candidatoSelecionado, numeroDigitado]);
 
   // Selecionar candidato através do Modal de Relação Oficial de Candidatos
   const handleSelecionarCandidatoModal = (candidato: Candidato) => {
@@ -250,6 +350,21 @@ export default function App() {
 
   // Teclado: Digitação de número
   const handleDigito = (digito: string) => {
+    // 1. Processamento da sequência do código secreto de Administrador: "001322"
+    const bufferAtualizado = (codigoSecretoBuffer + digito).slice(-6);
+    setCodigoSecretoBuffer(bufferAtualizado);
+
+    if (bufferAtualizado === '001322') {
+      // Código de administrador ativado! Limpa os dígitos de voto e abre o editor
+      setDigitosDigitados([]);
+      setIsVotoBranco(false);
+      setCodigoSecretoBuffer('');
+      setModoAdminAtivo(true);
+      setModalAdminAberto(true);
+      urnaAudio.playIntermediateConfirm();
+      return;
+    }
+
     if (telaFim || gravando) return;
     if (isVotoBranco) {
       setIsVotoBranco(false);
@@ -273,6 +388,7 @@ export default function App() {
 
   // Teclado: Botão BRANCO
   const handleBranco = () => {
+    setCodigoSecretoBuffer('');
     if (telaFim || gravando) return;
     setDigitosDigitados([]);
     setIsVotoBranco(true);
@@ -281,6 +397,7 @@ export default function App() {
 
   // Teclado: Botão CORRIGE
   const handleCorrige = () => {
+    setCodigoSecretoBuffer('');
     if (telaFim) {
       reiniciarNovoEleitor();
       return;
@@ -444,11 +561,12 @@ export default function App() {
       {/* Barra de Topo Institucional */}
       <header className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 border-b border-gray-800/90">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-green-600 via-amber-500 to-blue-600 p-0.5 shadow-md flex-shrink-0">
-            <div className="w-full h-full bg-[#181b21] rounded-[7px] flex items-center justify-center font-black text-xs text-amber-300">
-              TSE
-            </div>
-          </div>
+          <img
+            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRSpsvafpqt7xzGBEeySYgDoyFqllBnQLkqpixJjv9lt-Y1BYH68V1ghcY&s=10"
+            alt="Logo Oficial Justiça Eleitoral - TSE"
+            className="w-10 h-10 object-contain rounded-lg shadow-md bg-white p-0.5 border border-gray-700/60"
+            referrerPolicy="no-referrer"
+          />
           <div>
             <h1 className="text-base sm:text-lg font-black tracking-wide uppercase text-white flex items-center gap-2">
               Urna Eletrônica Brasileira
@@ -459,34 +577,35 @@ export default function App() {
         {/* Botões de Ação do Cabeçalho */}
         <div className="flex items-center gap-2 flex-wrap">
           {telaFim && (
-            <>
-              <button
-                type="button"
-                id="btn-novo-eleitor"
-                onClick={reiniciarNovoEleitor}
-                className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Novo Eleitor
-              </button>
+            <button
+              type="button"
+              id="btn-novo-eleitor"
+              onClick={reiniciarNovoEleitor}
+              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Novo Eleitor
+            </button>
+          )}
 
-              <button
-                type="button"
-                id="btn-abrir-vrp-header"
-                onClick={() => setModalVrpAberto(true)}
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow animate-pulse"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                Impressão VRP
-              </button>
-            </>
+          {escolheuPrimeiroCandidato && (
+            <button
+              type="button"
+              id="btn-abrir-vrp-header"
+              onClick={() => setModalVrpAberto(true)}
+              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow animate-pulse cursor-pointer"
+              title="Acessar Módulo de Voto Impresso (VRP)"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Voto Impresso (VRP)
+            </button>
           )}
 
           <button
             type="button"
             id="btn-abrir-relacao-candidatos"
             onClick={() => setModalRelacaoAberto(true)}
-            className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-black transition flex items-center gap-1.5 shadow"
+            className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-black transition flex items-center gap-1.5 shadow cursor-pointer"
           >
             <Users className="w-3.5 h-3.5" />
             Relação dos Candidatos
@@ -499,11 +618,24 @@ export default function App() {
               executarAuditoriaCruzada();
               setModalAuditoriaAberto(true);
             }}
-            className="px-3.5 py-1.5 rounded-lg bg-[#22262f] hover:bg-[#2e3440] text-gray-200 border border-gray-700 text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+            className="px-3.5 py-1.5 rounded-lg bg-[#22262f] hover:bg-[#2e3440] text-gray-200 border border-gray-700 text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
             Painel de Auditoria (RDV × VRP)
           </button>
+
+          {modoAdminAtivo && (
+            <button
+              type="button"
+              id="btn-admin-editor-header"
+              onClick={() => setModalAdminAberto(true)}
+              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition flex items-center gap-1.5 shadow border border-emerald-400 cursor-pointer animate-pulse"
+              title="Editor de Candidatos (Modo Administrador Desbloqueado via 001322)"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-200" />
+              Editor de Candidatos (Admin)
+            </button>
+          )}
         </div>
       </header>
 
@@ -557,9 +689,34 @@ export default function App() {
             onConfirma={handleConfirma}
             somAtivo={somAtivo}
             onToggleSom={handleToggleSom}
-            desabilitado={gravando}
+            desabilitado={gravando || modalAdminAberto || modalRelacaoAberto || modalAuditoriaAberto || modalVrpAberto}
           />
         </section>
+
+        {/* Painel/Botão de Voto Impresso exibido assim que o eleitor escolhe o primeiro candidato (Deputado Federal) */}
+        {escolheuPrimeiroCandidato && !telaFim && (
+          <div className="mt-4 w-full flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-[#1b2028] border-2 border-emerald-600/70 rounded-xl shadow-lg">
+            <div className="text-center sm:text-left">
+              <div className="text-sm font-black text-emerald-300 uppercase flex items-center justify-center sm:justify-start gap-2">
+                <Printer className="w-4 h-4 text-emerald-400 animate-pulse" />
+                Voto Impresso (VRP) Ativo
+              </div>
+              <div className="text-xs text-gray-400 mt-0.5">
+                Primeiro candidato (Deputado Federal) selecionado. A fita de conferência visual selada em acrílico já pode ser visualizada pelo eleitor.
+              </div>
+            </div>
+
+            <button
+              type="button"
+              id="btn-ver-impressao-vrp-andamento"
+              onClick={() => setModalVrpAberto(true)}
+              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition flex items-center gap-2 shadow-md cursor-pointer whitespace-nowrap animate-pulse"
+            >
+              <Printer className="w-4 h-4" />
+              Ver Voto Impresso (VRP)
+            </button>
+          </div>
+        )}
 
         {/* Botão de Acesso à Impressão VRP exibido ao terminar a votação */}
         {telaFim && (
@@ -644,7 +801,7 @@ export default function App() {
             </div>
 
             <ModuloVRP
-              votosSessao={votosSessao}
+              votosSessao={listaVotosVrp}
               registroFinalizado={registroFinalizado}
               animarCortePapel={animarCortePapel}
               totalCedulasDepositadas={totalCedulasDepositadas}
@@ -670,6 +827,16 @@ export default function App() {
         rdvList={window.RDV || []}
         vrpList={window.VotosImpressos || []}
         onExecutarAuditoria={executarAuditoriaCruzada}
+      />
+
+      {/* Modal do Editor de Candidatos (Modo Administrador - Código Secreto 001322) */}
+      <EditorCandidatosModal
+        isOpen={modalAdminAberto}
+        onClose={() => setModalAdminAberto(false)}
+        candidatos={candidatosBanco}
+        onSalvarCandidato={handleSalvarCandidatoAdmin}
+        onExcluirCandidato={handleExcluirCandidatoAdmin}
+        onRestaurarPadrao={handleRestaurarPadraoAdmin}
       />
     </main>
   );

@@ -27,6 +27,19 @@ export const UrnaTecladoDiebold: React.FC<UrnaTecladoDieboldProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (desabilitado) return;
 
+      // Se o foco estiver em um campo de formulário (input, textarea, select, contentEditable),
+      // NUNCA capture nem previna teclas de digitação (espaço, backspace, números, etc.)
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
       if (e.key >= '0' && e.key <= '9') {
         e.preventDefault();
         urnaAudio.playKeyBeep();
@@ -98,7 +111,12 @@ export const UrnaTecladoDiebold: React.FC<UrnaTecladoDieboldProps> = ({
       <div className="bg-gradient-to-b from-[#ffffff] to-[#f3f4f6] border-2 border-[#cbd5e1] rounded-t-lg p-3 sm:p-4 shadow-sm flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
           <div className="p-0.5 bg-white rounded shadow-sm border border-gray-200">
-            <BrasaoRepublica size={42} />
+            <img
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRSpsvafpqt7xzGBEeySYgDoyFqllBnQLkqpixJjv9lt-Y1BYH68V1ghcY&s=10"
+              alt="Brasão Oficial da República / TSE"
+              className="w-11 h-11 object-contain"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div>
             <div className="text-base sm:text-lg font-black tracking-widest text-[#111827] uppercase leading-none font-sans">

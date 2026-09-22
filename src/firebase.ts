@@ -6,6 +6,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  deleteDoc,
   getDocs,
   serverTimestamp,
   increment,
@@ -189,6 +190,112 @@ export async function semearCandidatosFirestore(
   } catch (error: any) {
     console.error('Erro ao semear candidatos no Firestore:', error);
     return { sucesso: false, total: 0, erro: error?.message || 'Falha ao salvar no Firestore' };
+  }
+}
+
+/**
+ * Salva ou atualiza um candidato no Firestore.
+ * Se o cargo ou número tiverem mudado em relação ao original, apaga o documento anterior.
+ */
+export async function salvarOuAtualizarCandidatoFirestore(
+  candidato: Candidato,
+  idAntigo?: { cargo: string; numero: string }
+): Promise<{ sucesso: boolean; erro?: string }> {
+  try {
+    const cargoBase = candidato.cargo === 'senador-2' ? 'senador-1' : candidato.cargo;
+    const docId = `${cargoBase}_${candidato.numero}`;
+    const candidatoRef = doc(db, 'candidatos', docId);
+
+    const dadosCandidato: Record<string, any> = {
+      numero: String(candidato.numero),
+      nome: candidato.nome.trim(),
+      nomeUrna: candidato.nomeUrna.trim(),
+      partido: candidato.partido.trim(),
+      siglaPartido: candidato.siglaPartido.trim().toUpperCase(),
+      cargo: candidato.cargo,
+      fotoUrl: candidato.fotoUrl.trim(),
+      ativo: true,
+      atualizadoEm: serverTimestamp(),
+    };
+
+    if (candidato.vice && (candidato.cargo === 'presidente' || candidato.cargo === 'governador')) {
+      dadosCandidato.vice = {
+        nome: candidato.vice.nome.trim(),
+        titulo: candidato.vice.titulo || (candidato.cargo === 'presidente' ? 'Vice-Presidente' : 'Vice-Governador'),
+        fotoUrl: candidato.vice.fotoUrl?.trim() || null,
+      };
+    } else {
+      dadosCandidato.vice = null;
+    }
+
+    if (candidato.suplentes && (candidato.cargo === 'senador-1' || candidato.cargo === 'senador-2')) {
+      dadosCandidato.suplentes = {
+        primeiro: candidato.suplentes.primeiro.trim(),
+        segundo: candidato.suplentes.segundo.trim(),
+      };
+    } else {
+      dadosCandidato.suplentes = null;
+    }
+
+    // Se houve mudança de número ou cargo, remove o documento anterior
+    if (idAntigo) {
+      const cargoBaseAntigo = idAntigo.cargo === 'senador-2' ? 'senador-1' : idAntigo.cargo;
+      const docIdAntigo = `${cargoBaseAntigo}_${idAntigo.numero}`;
+      if (docIdAntigo !== docId) {
+        try {
+          await deleteDoc(doc(db, 'candidatos', docIdAntigo));
+        } catch (delErr) {
+          console.warn('Erro ao remover documento antigo do Firestore:', delErr);
+        }
+      }
+    }
+
+    await setDoc(candidatoRef, dadosCandidato, { merge: true });
+    return { sucesso: true };
+  } catch (error: any) {
+    console.error('Erro ao salvar candidato no Firestore:', error);
+    return { sucesso: false, erro: error?.message || 'Falha ao salvar candidato no Firestore' };
+  }
+}
+
+/**
+ * Exclui um candidato do Firestore.
+ */
+export async function excluirCandidatoFirestore(
+  cargo: string,
+  numero: string
+): Promise<{ sucesso: boolean; erro?: string }> {
+  try {
+    const cargoBase = cargo === 'senador-2' ? 'senador-1' : cargo;
+    const docId = `${cargoBase}_${numero}`;
+    const docRef = doc(db, 'candidatos', docId);
+    await deleteDoc(docRef);
+    return { sucesso: true };
+  } catch (error: any) {
+    console.error('Erro ao excluir candidato no Firestore:', error);
+    return { sucesso: false, erro: error?.message || 'Falha ao excluir candidato do Firestore' };
+  }
+}
+
+/**
+ * Restaura todos os candidatos padrão no Firestore.
+ */
+export async function restaurarCandidatosPadraoFirestore(): Promise<{ sucesso: boolean; erro?: string }> {
+  try {
+    // 1. Obter todos os candidatos atuais e deletar
+    const snapshot = await getDocs(collection(db, 'candidatos'));
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((d) => {
+      batch.delete(d.ref);
+    });
+    await batch.commit();
+
+    // 2. Semear com base inicial
+    await semearCandidatosFirestore(CANDIDATOS_BASE);
+    return { sucesso: true };
+  } catch (error: any) {
+    console.error('Erro ao restaurar candidatos padrão no Firestore:', error);
+    return { sucesso: false, erro: error?.message || 'Falha ao restaurar candidatos padrão' };
   }
 }
 
